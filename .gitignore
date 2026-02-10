@@ -37,3 +37,5 @@ application-local.yml
 
 docker-compose.yml
 application.yml
+
+*.ps1
