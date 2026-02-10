@@ -34,3 +34,6 @@ build/
 
 ### Local Config ###
 application-local.yml
+
+docker-compose.yml
+application.yml
