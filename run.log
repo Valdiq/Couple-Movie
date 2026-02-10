@@ -1,0 +1,109 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< vladyslav.stasyshyn:couple-movie >------------------
+[INFO] Building couple-movie 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.0:run (default-cli) > test-compile @ couple-movie >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ couple-movie ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ couple-movie ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ couple-movie ---
+[INFO] skip non existing resourceDirectory D:\Study\Vistula\CoupleMovie\couple-movie\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ couple-movie ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.0:run (default-cli) < test-compile @ couple-movie <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.0:run (default-cli) @ couple-movie ---
+[INFO] Attaching agents: []
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.0)
+
+2026-02-10T23:10:58.984+01:00  INFO 35232 --- [couple-movie] [           main] v.s.couple_movie.CoupleMovieApplication  : Starting CoupleMovieApplication using Java 21.0.2 with PID 35232 (D:\Study\Vistula\CoupleMovie\couple-movie\target\classes started by vladi in D:\Study\Vistula\CoupleMovie\couple-movie)
+2026-02-10T23:10:58.987+01:00  INFO 35232 --- [couple-movie] [           main] v.s.couple_movie.CoupleMovieApplication  : No active profile set, falling back to 1 default profile: "default"
+2026-02-10T23:10:59.614+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-02-10T23:10:59.615+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Elasticsearch repositories in DEFAULT mode.
+2026-02-10T23:10:59.646+01:00  INFO 35232 --- [couple-movie] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Elasticsearch - Could not safely identify store assignment for repository candidate interface vladyslav.stasyshyn.couple_movie.repository.UserRepository; If you want this repository to be a Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ElasticsearchRepository
+2026-02-10T23:10:59.660+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 41 ms. Found 1 Elasticsearch repository interface.
+2026-02-10T23:10:59.665+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-02-10T23:10:59.665+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Reactive Elasticsearch repositories in DEFAULT mode.
+2026-02-10T23:10:59.670+01:00  INFO 35232 --- [couple-movie] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Reactive Elasticsearch - Could not safely identify store assignment for repository candidate interface vladyslav.stasyshyn.couple_movie.repository.UserRepository; If you want this repository to be a Reactive Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ReactiveElasticsearchRepository
+2026-02-10T23:10:59.670+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 4 ms. Found 0 Reactive Elasticsearch repository interfaces.
+2026-02-10T23:10:59.677+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-02-10T23:10:59.677+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-10T23:10:59.684+01:00  INFO 35232 --- [couple-movie] [           main] .RepositoryConfigurationExtensionSupport : Spring Data JPA - Could not safely identify store assignment for repository candidate interface vladyslav.stasyshyn.couple_movie.repository.MovieSearchRepository; If you want this repository to be a JPA repository, consider annotating your entities with one of these annotations: jakarta.persistence.Entity, jakarta.persistence.MappedSuperclass (preferred), or consider extending one of the following types with your repository: org.springframework.data.jpa.repository.JpaRepository
+2026-02-10T23:10:59.687+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 7 ms. Found 1 JPA repository interface.
+2026-02-10T23:10:59.707+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-02-10T23:10:59.707+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2026-02-10T23:10:59.711+01:00  INFO 35232 --- [couple-movie] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface vladyslav.stasyshyn.couple_movie.repository.MovieSearchRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-02-10T23:10:59.711+01:00  INFO 35232 --- [couple-movie] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface vladyslav.stasyshyn.couple_movie.repository.UserRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-02-10T23:10:59.711+01:00  INFO 35232 --- [couple-movie] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 3 ms. Found 0 MongoDB repository interfaces.
+2026-02-10T23:11:00.208+01:00  INFO 35232 --- [couple-movie] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-02-10T23:11:00.218+01:00  INFO 35232 --- [couple-movie] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-10T23:11:00.218+01:00  INFO 35232 --- [couple-movie] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.24]
+2026-02-10T23:11:00.278+01:00  INFO 35232 --- [couple-movie] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-02-10T23:11:00.278+01:00  INFO 35232 --- [couple-movie] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1252 ms
+2026-02-10T23:11:00.392+01:00  INFO 35232 --- [couple-movie] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-10T23:11:00.436+01:00  INFO 35232 --- [couple-movie] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
+2026-02-10T23:11:00.462+01:00  INFO 35232 --- [couple-movie] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-02-10T23:11:00.692+01:00  INFO 35232 --- [couple-movie] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-10T23:11:00.713+01:00  INFO 35232 --- [couple-movie] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-02-10T23:11:00.855+01:00  INFO 35232 --- [couple-movie] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@63814bbe
+2026-02-10T23:11:00.857+01:00  INFO 35232 --- [couple-movie] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-02-10T23:11:01.670+01:00  INFO 35232 --- [couple-movie] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-10T23:11:01.712+01:00  INFO 35232 --- [couple-movie] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-10T23:11:02.047+01:00  INFO 35232 --- [couple-movie] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-02-10T23:11:02.047+01:00  WARN 35232 --- [couple-movie] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-02-10T23:11:02.545+01:00  WARN 35232 --- [couple-movie] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-10T23:11:02.748+01:00  INFO 35232 --- [couple-movie] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@3f16a823, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3fb5809a, org.springframework.security.web.context.SecurityContextHolderFilter@5add0cc0, org.springframework.security.web.header.HeaderWriterFilter@557f0a39, org.springframework.web.filter.CorsFilter@77954f77, org.springframework.security.web.authentication.logout.LogoutFilter@367e0b0e, org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter@503b5337, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter@2d85a4c7, vladyslav.stasyshyn.couple_movie.config.JwtAuthenticationFilter@5ca006ac, org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter@78907a46, org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter@6529b078, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@1e470a51, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@5b784f16, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6f744b4e, org.springframework.security.web.session.SessionManagementFilter@d319d2c, org.springframework.security.web.access.ExceptionTranslationFilter@4c9235c0, org.springframework.security.web.access.intercept.AuthorizationFilter@44872224]
+2026-02-10T23:11:03.018+01:00  INFO 35232 --- [couple-movie] [           main] org.mongodb.driver.client                : MongoClient with metadata {"driver": {"name": "mongo-java-driver|sync|spring-boot", "version": "5.0.1"}, "os": {"type": "Windows", "name": "Windows 11", "architecture": "amd64", "version": "10.0"}, "platform": "Java/Oracle Corporation/21.0.2+13-LTS-58"} created with settings MongoClientSettings{readPreference=primary, writeConcern=WriteConcern{w=null, wTimeout=null ms, journal=null}, retryWrites=true, retryReads=true, readConcern=ReadConcern{level=null}, credential=null, transportSettings=null, commandListeners=[], codecRegistry=ProvidersCodecRegistry{codecProviders=[ValueCodecProvider{}, BsonValueCodecProvider{}, DBRefCodecProvider{}, DBObjectCodecProvider{}, DocumentCodecProvider{}, CollectionCodecProvider{}, IterableCodecProvider{}, MapCodecProvider{}, GeoJsonCodecProvider{}, GridFSFileCodecProvider{}, Jsr310CodecProvider{}, JsonObjectCodecProvider{}, BsonCodecProvider{}, EnumCodecProvider{}, com.mongodb.client.model.mql.ExpressionCodecProvider@511ba9c9, com.mongodb.Jep395RecordCodecProvider@3debeb5e, com.mongodb.KotlinCodecProvider@5297030e]}, loggerSettings=LoggerSettings{maxDocumentLength=1000}, clusterSettings={hosts=[localhost:27017], srvServiceName=mongodb, mode=SINGLE, requiredClusterType=UNKNOWN, requiredReplicaSetName='null', serverSelector='null', clusterListeners='[]', serverSelectionTimeout='30000 ms', localThreshold='15 ms'}, socketSettings=SocketSettings{connectTimeoutMS=10000, readTimeoutMS=0, receiveBufferSize=0, proxySettings=ProxySettings{host=null, port=null, username=null, password=null}}, heartbeatSocketSettings=SocketSettings{connectTimeoutMS=10000, readTimeoutMS=10000, receiveBufferSize=0, proxySettings=ProxySettings{host=null, port=null, username=null, password=null}}, connectionPoolSettings=ConnectionPoolSettings{maxSize=100, minSize=0, maxWaitTimeMS=120000, maxConnectionLifeTimeMS=0, maxConnectionIdleTimeMS=0, maintenanceInitialDelayMS=0, maintenanceFrequencyMS=60000, connectionPoolListeners=[], maxConnecting=2}, serverSettings=ServerSettings{heartbeatFrequencyMS=10000, minHeartbeatFrequencyMS=500, serverListeners='[]', serverMonitorListeners='[]'}, sslSettings=SslSettings{enabled=false, invalidHostNameAllowed=false, context=null}, applicationName='null', compressorList=[], uuidRepresentation=JAVA_LEGACY, serverApi=null, autoEncryptionSettings=null, dnsClient=null, inetAddressResolver=null, contextProvider=null}
+2026-02-10T23:11:03.030+01:00  INFO 35232 --- [couple-movie] [localhost:27017] org.mongodb.driver.cluster               : Monitor thread successfully connected to server with description ServerDescription{address=localhost:27017, type=STANDALONE, state=CONNECTED, ok=true, minWireVersion=0, maxWireVersion=25, maxDocumentSize=16777216, logicalSessionTimeoutMinutes=30, roundTripTimeNanos=24213200}
+2026-02-10T23:11:03.233+01:00  WARN 35232 --- [couple-movie] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-02-10T23:11:03.239+01:00  INFO 35232 --- [couple-movie] [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-10T23:11:03.240+01:00  INFO 35232 --- [couple-movie] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-02-10T23:11:03.246+01:00  INFO 35232 --- [couple-movie] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-02-10T23:11:03.255+01:00  INFO 35232 --- [couple-movie] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-02-10T23:11:03.268+01:00 ERROR 35232 --- [couple-movie] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.046 s
+[INFO] Finished at: 2026-02-10T23:11:03+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.3.0:run (default-cli) on project couple-movie: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

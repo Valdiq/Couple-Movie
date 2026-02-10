@@ -13,14 +13,15 @@ public class OmdbService {
 
     private final RestClient restClient;
     private final String apiKey;
-    private final String omdbUrl;
+    private final MovieSearchService movieSearchService;
 
     public OmdbService(RestClient.Builder restClientBuilder,
-            @Value("${app.omdb.api-key}") String apiKey,
-            @Value("${app.omdb.url}") String omdbUrl) {
+                       @Value("${app.omdb.api-key}") String apiKey,
+                       @Value("${app.omdb.url}") String omdbUrl,
+                       MovieSearchService movieSearchService) {
         this.apiKey = apiKey;
-        this.omdbUrl = omdbUrl;
         this.restClient = restClientBuilder.baseUrl(omdbUrl).build();
+        this.movieSearchService = movieSearchService;
     }
 
     public OmdbSearchResponse searchMovies(String title) {
@@ -36,7 +37,7 @@ public class OmdbService {
 
     public OmdbMovieDetails getMovieDetails(String imdbId) {
         log.info("Fetching movie details for imdbID: {}", imdbId);
-        return restClient.get()
+        OmdbMovieDetails movieDetails = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .queryParam("apikey", apiKey)
                         .queryParam("i", imdbId)
@@ -44,5 +45,11 @@ public class OmdbService {
                         .build())
                 .retrieve()
                 .body(OmdbMovieDetails.class);
+
+        if (movieDetails != null) {
+            movieSearchService.saveMovie(movieDetails);
+        }
+
+        return movieDetails;
     }
 }
