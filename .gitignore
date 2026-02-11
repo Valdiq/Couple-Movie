@@ -39,3 +39,4 @@ docker-compose.yml
 application.yml
 
 *.ps1
+*.log
