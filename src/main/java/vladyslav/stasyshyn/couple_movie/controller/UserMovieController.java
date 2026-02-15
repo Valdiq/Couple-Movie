@@ -14,7 +14,7 @@ import vladyslav.stasyshyn.couple_movie.service.UserMovieService;
  * watchlistStatus and ratings.
  */
 @RestController
-@RequestMapping("/api/user/movies")
+@RequestMapping("/api/v1/user/movies")
 @RequiredArgsConstructor
 public class UserMovieController {
 

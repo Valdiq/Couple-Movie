@@ -11,7 +11,7 @@ import vladyslav.stasyshyn.couple_movie.service.CoupleService;
  * Controller for managing couple connections and invitations.
  */
 @RestController
-@RequestMapping("/api/couple")
+@RequestMapping("/api/v1/couple")
 @RequiredArgsConstructor
 public class CoupleController {
 

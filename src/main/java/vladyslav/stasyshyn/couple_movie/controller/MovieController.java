@@ -14,7 +14,7 @@ import vladyslav.stasyshyn.couple_movie.service.OmdbService;
  * Controller for public movie search and details retrieval.
  */
 @RestController
-@RequestMapping("/api/movies")
+@RequestMapping("/api/v1/movies")
 @RequiredArgsConstructor
 public class MovieController {
 
