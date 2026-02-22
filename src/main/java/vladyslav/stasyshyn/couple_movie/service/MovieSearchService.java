@@ -7,8 +7,7 @@ import vladyslav.stasyshyn.couple_movie.document.MovieDocument;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieDetails;
 import vladyslav.stasyshyn.couple_movie.repository.MovieSearchRepository;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -49,5 +48,25 @@ public class MovieSearchService {
 
     public Optional<MovieDocument> getMovieById(String imdbId) {
         return movieSearchRepository.findById(imdbId);
+    }
+
+    /**
+     * Search for movies that match any of the provided genres.
+     * Deduplicates results by imdbID.
+     */
+    public List<MovieDocument> searchByGenres(List<String> genres) {
+        Set<String> seenIds = new HashSet<>();
+        List<MovieDocument> results = new ArrayList<>();
+
+        for (String genre : genres) {
+            List<MovieDocument> movies = movieSearchRepository.findByGenreContaining(genre.trim());
+            for (MovieDocument movie : movies) {
+                if (seenIds.add(movie.getImdbID())) {
+                    results.add(movie);
+                }
+            }
+        }
+
+        return results;
     }
 }

@@ -25,9 +25,9 @@ public class CoupleController {
      * @return The created invitation request.
      */
     @PostMapping("/invite")
-    public ResponseEntity<?> sendInvite(@AuthenticationPrincipal User user, @RequestParam("email") String email) {
+    public ResponseEntity<?> sendInvite(@AuthenticationPrincipal User user, @RequestParam("username") String username) {
         try {
-            return ResponseEntity.ok(coupleService.sendInvite(user, email));
+            return ResponseEntity.ok(coupleService.sendInvite(user, username));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {

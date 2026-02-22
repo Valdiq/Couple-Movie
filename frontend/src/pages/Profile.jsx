@@ -1,285 +1,302 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { User as UserIcon, Crown, LogOut, Settings, Star, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { User } from "@/entities/User";
-import { UserFavorite } from "@/entities/UserFavorite";
-import { Couple } from "@/entities/Couple";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/lib/AuthContext';
+import { User as UserEntity } from '@/entities/User';
+import { UserFavorite } from '@/entities/UserFavorite';
+import { Couple } from '@/entities/Couple';
+import { Badge } from '@/components/ui/badge';
+import { User, Camera, Heart, Calendar, Star, LogOut, Film, Check, X, UserPlus, Loader2 } from 'lucide-react';
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({
-    favorites: 0,
-    partnerConnected: false,
-    joinDate: null
-  });
+  const { user: authUser, isLoading: isLoadingAuth } = useAuth();
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [stats, setStats] = useState({ favorites: 0, joinDate: null });
+  const [invites, setInvites] = useState([]);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [message, setMessage] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    loadUserAndStats();
-  }, []);
+    loadProfile();
+  }, [authUser]);
 
-  const loadUserAndStats = async () => {
+  const loadProfile = async () => {
+    setIsLoading(true);
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
+      const userData = await UserEntity.me();
+      if (userData) {
+        setCurrentUser(userData);
+        setStats(prev => ({
+          ...prev,
+          joinDate: userData.created_date
+        }));
 
-      // Load user stats
-      const userFavorites = await UserFavorite.filter({ user_email: currentUser.email });
-      
-      const partnerships = await Couple.filter({
-        $or: [
-          { user1_email: currentUser.email },
-          { user2_email: currentUser.email }
-        ]
-      });
+        // Load favorites count
+        try {
+          const favs = await UserFavorite.list();
+          setStats(prev => ({ ...prev, favorites: Array.isArray(favs) ? favs.length : 0 }));
+        } catch (e) {
+          // Favorites not available
+        }
 
-      setStats({
-        favorites: userFavorites.length,
-        partnerConnected: partnerships.length > 0 && partnerships[0].status === 'accepted',
-        joinDate: currentUser.created_date
-      });
+        // Load invitations
+        try {
+          const inviteData = await Couple.getInvites();
+          setInvites(inviteData || []);
+        } catch (e) {
+          // No invites
+        }
+      }
     } catch (error) {
-      console.error("Error loading user:", error);
-      setUser(null);
+      console.error('Error loading profile:', error);
     }
     setIsLoading(false);
   };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image too large. Max 2MB.' });
+      return;
+    }
+
+    setAvatarUploading(true);
+    setMessage(null);
+
     try {
-      await User.logout();
-      // Redirect will happen automatically
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target.result;
+        try {
+          await UserEntity.updateMyUserData({ avatar_url: base64 });
+          setCurrentUser(prev => ({ ...prev, avatar_url: base64 }));
+          setMessage({ type: 'success', text: 'Avatar updated!' });
+        } catch (err) {
+          console.error('Failed to save avatar:', err);
+          setMessage({ type: 'error', text: 'Failed to save avatar' });
+        }
+        setAvatarUploading(false);
+      };
+      reader.onerror = () => {
+        setMessage({ type: 'error', text: 'Failed to read file' });
+        setAvatarUploading(false);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error logging out:", error);
-      setIsLoggingOut(false);
+      setMessage({ type: 'error', text: 'Failed to upload avatar' });
+      setAvatarUploading(false);
     }
   };
 
-  const handleUpgrade = async () => {
+  const handleAcceptInvite = async (requestId) => {
     try {
-      await User.updateMyUserData({ subscription_plan: 'pro' });
-      const updatedUser = await User.me();
-      setUser(updatedUser);
+      await Couple.acceptInvite(requestId);
+      setMessage({ type: 'success', text: 'Invitation accepted! Check the Couple page.' });
+      setInvites(invites.filter(inv => inv.id !== requestId));
     } catch (error) {
-      console.error("Failed to upgrade:", error);
+      setMessage({ type: 'error', text: 'Failed to accept invitation' });
     }
   };
 
-  if (isLoading) {
+  const handleRejectInvite = async (requestId) => {
+    try {
+      await Couple.rejectInvite(requestId);
+      setMessage({ type: 'success', text: 'Invitation declined' });
+      setInvites(invites.filter(inv => inv.id !== requestId));
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to decline invitation' });
+    }
+  };
+
+  const handleLogout = () => {
+    UserEntity.logout();
+  };
+
+  if (isLoadingAuth || isLoading) {
     return (
-      <div className="min-h-screen py-16 bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading your profile...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
       </div>
     );
   }
 
-  if (!user) {
+  if (!currentUser) {
     return (
-      <div className="min-h-screen py-16 bg-slate-900">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-800/50 rounded-3xl p-12 border border-slate-700"
-          >
-            <div className="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserIcon className="w-10 h-10 text-slate-400" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-100 mb-4">Join CoupleMovie</h1>
-            <p className="text-lg text-slate-400 mb-8">
-              Sign in to discover your perfect movie matches, create favorites, and share the experience with your partner.
-            </p>
-            <Button 
-              onClick={() => User.login()}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 text-lg"
-            >
-              Sign In / Sign Up
-            </Button>
-          </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <User className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-100 mb-2">Not Logged In</h2>
+          <p className="text-slate-400 mb-4">Please log in to view your profile</p>
+          <a href="/login" className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity">
+            Login
+          </a>
         </div>
       </div>
     );
   }
 
+  const fullName = [currentUser.firstname, currentUser.lastname].filter(Boolean).join(' ') || currentUser.full_name || 'User';
+
   return (
-    <div className="min-h-screen py-16 pb-20 md:pb-16 bg-slate-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      {/* Profile Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        {/* Avatar */}
+        <div
+          className="group relative w-28 h-28 mx-auto mb-4 cursor-pointer"
+          onClick={handleAvatarClick}
         >
-          <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-            <UserIcon className="w-12 h-12 text-slate-300" />
+          <div className="w-28 h-28 rounded-full bg-slate-700 border-2 border-slate-600 overflow-hidden flex items-center justify-center">
+            {currentUser.avatar_url ? (
+              <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-14 h-14 text-slate-400" />
+            )}
           </div>
-          <h1 className="text-4xl font-bold text-slate-100 mb-2">{user.full_name}</h1>
-          <p className="text-lg text-slate-400">{user.email}</p>
-        </motion.div>
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+            {avatarUploading ? (
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            ) : (
+              <Camera className="w-6 h-6 text-white" />
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
+        </div>
 
-        {/* Subscription Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
+        {/* Name + Username */}
+        <h2 className="text-2xl font-bold text-slate-100">{fullName}</h2>
+        {currentUser.username && (
+          <p className="text-slate-400 text-sm mt-1">@{currentUser.username}</p>
+        )}
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-colors text-sm"
         >
-          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h3 className="text-xl font-semibold text-slate-100 mb-2 flex items-center gap-2">
-                  {user.subscription_plan === 'pro' ? (
-                    <Crown className="w-5 h-5 text-yellow-500" />
-                  ) : (
-                    <Star className="w-5 h-5 text-slate-400" />
-                  )}
-                  {user.subscription_plan === 'pro' ? 'CoupleMovie Pro' : 'Free Plan'}
-                </h3>
-                <p className="text-slate-400">
-                  {user.subscription_plan === 'pro' 
-                    ? 'You have access to all premium features including Couple Space'
-                    : 'Upgrade to unlock Couple Space and advanced features'
-                  }
-                </p>
-              </div>
-              {user.subscription_plan === 'free' && (
-                <div className="flex gap-3">
-                  <Link to={createPageUrl("Pricing")}>
-                    <Button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                      <Crown className="w-4 h-4 mr-2" />
-                      Upgrade to Pro
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
+      </motion.div>
 
-        {/* Stats */}
+      {/* Messages */}
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className={`p-3 rounded-xl text-center text-sm ${message.type === 'success'
+              ? 'bg-green-900/30 border border-green-500/30 text-green-300'
+              : 'bg-red-900/30 border border-red-500/30 text-red-300'
+              }`}
+          >
+            {message.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Couple Invitations */}
+      {invites.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid md:grid-cols-3 gap-6 mb-8"
+          className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-2xl p-5 border border-purple-500/30"
         >
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">{stats.favorites}</div>
-            <div className="text-slate-400">Favorite Movies</div>
-          </div>
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">
-              {stats.partnerConnected ? '1' : '0'}
-            </div>
-            <div className="text-slate-400">Partner Connected</div>
-          </div>
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">
-              {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
-            </div>
-            <div className="text-slate-400">Member Since</div>
-          </div>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-6"
-        >
-          <h2 className="text-2xl font-bold text-slate-100">Quick Actions</h2>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            <Link to={createPageUrl("Favorites")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Star className="w-8 h-8 text-rose-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">My Favorites</h3>
-                    <p className="text-slate-400 text-sm">View your saved movies</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link to={createPageUrl("Couple")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-purple-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">Couple Space</h3>
-                    <p className="text-slate-400 text-sm">
-                      {user.subscription_plan === 'pro' ? 'Manage shared watchlists' : 'Upgrade to unlock'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link to={createPageUrl("Search")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Settings className="w-8 h-8 text-indigo-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">Discover Movies</h3>
-                    <p className="text-slate-400 text-sm">Find your next favorite</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <div 
-              onClick={handleLogout}
-              className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-red-900/20 hover:border-red-700/50 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <LogOut className="w-8 h-8 text-red-400" />
+          <h3 className="text-base font-semibold text-slate-100 mb-3 flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-purple-400" />
+            Couple Invitations ({invites.length})
+          </h3>
+          <div className="space-y-3">
+            {invites.map(invite => (
+              <div key={invite.id} className="flex items-center justify-between bg-slate-800/60 rounded-xl p-4">
                 <div>
-                  <h3 className="font-semibold text-slate-200">Sign Out</h3>
-                  <p className="text-slate-400 text-sm">
-                    {isLoggingOut ? 'Signing out...' : 'Logout from your account'}
+                  <p className="text-slate-200 font-medium">
+                    {invite.sender?.firstName} {invite.sender?.lastName}
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    wants to create a couple space with you
                   </p>
                 </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleAcceptInvite(invite.id)}
+                    className="p-2 bg-green-600/20 hover:bg-green-600/40 rounded-lg text-green-400 transition-colors"
+                    title="Accept"
+                  >
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleRejectInvite(invite.id)}
+                    className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors"
+                    title="Decline"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </motion.div>
+      )}
 
-        {/* Account Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-12 pt-8 border-t border-slate-800"
-        >
-          <h3 className="text-lg font-semibold text-slate-200 mb-4">Account Information</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Email:</span>
-              <span className="text-slate-300">{user.email}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Plan:</span>
-              <Badge className={user.subscription_plan === 'pro' 
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
-                : 'bg-slate-700 text-slate-300'
-              }>
-                {user.subscription_plan === 'pro' ? 'Pro' : 'Free'}
-              </Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Member since:</span>
-              <span className="text-slate-300">
-                {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString() : 'Unknown'}
-              </span>
-            </div>
+      {/* Plan Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50"
+      >
+        <div className="flex items-center gap-3">
+          <Star className="w-5 h-5 text-slate-400" />
+          <div>
+            <h3 className="text-lg font-semibold text-slate-100">Free Plan</h3>
+            <p className="text-sm text-slate-400">Upgrade to unlock Couple Space and advanced features</p>
           </div>
+        </div>
+      </motion.div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 text-center"
+        >
+          <div className="text-3xl font-bold text-slate-100 mb-1">{stats.favorites}</div>
+          <div className="text-slate-400 text-sm">Favorite Movies</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 text-center"
+        >
+          <div className="text-3xl font-bold text-slate-100 mb-1">
+            {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
+          </div>
+          <div className="text-slate-400 text-sm">Member Since</div>
         </motion.div>
       </div>
     </div>

@@ -1,19 +1,32 @@
 import api from '../api/axios';
 
 export const coupleService = {
-    create: async (partnerEmail) => {
-        const response = await api.post('/couples', { partner_email: partnerEmail });
+    invite: async (username) => {
+        const response = await api.post(`/couple/invite?username=${encodeURIComponent(username)}`);
         return response.data;
     },
-    get: async () => {
+    getInvites: async () => {
         try {
-            const response = await api.get('/couples/current');
+            const response = await api.get('/couple/invites');
+            return response.data;
+        } catch (e) {
+            return [];
+        }
+    },
+    acceptInvite: async (requestId) => {
+        const response = await api.post(`/couple/accept/${requestId}`);
+        return response.data;
+    },
+    rejectInvite: async (requestId) => {
+        const response = await api.post(`/couple/reject/${requestId}`);
+        return response.data;
+    },
+    getPartner: async () => {
+        try {
+            const response = await api.get('/couple/partner');
             return response.data;
         } catch (e) {
             return null;
         }
-    },
-    leave: async () => {
-        await api.delete('/couples/current');
     }
 };

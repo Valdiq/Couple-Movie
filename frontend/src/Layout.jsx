@@ -26,10 +26,11 @@ export default function Layout({ children, currentPageName }) {
           --ring: 340 82% 52%;
         }
       `}</style>
-      
+
       <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-3">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-3 items-center py-3">
+            {/* Logo - left */}
             <Link to={createPageUrl("Home")} className="flex items-center gap-3">
               <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center border border-slate-700 shadow-sm">
                 <Heart className="w-5 h-5 text-rose-500 fill-current" />
@@ -38,41 +39,46 @@ export default function Layout({ children, currentPageName }) {
                 CoupleMovie
               </h1>
             </Link>
-            
-            <nav className="hidden md:flex items-center gap-1 bg-slate-800/50 p-1 rounded-full border border-slate-700">
-              {[
-                { page: "Home", label: "Discover", icon: Home },
-                { page: "Search", label: "Search", icon: Search },
-                { page: "Favorites", label: "Favorites", icon: Star },
-                { page: "Couple", label: "Couple", icon: Users },
-              ].map(({ page, label, icon: Icon }) => (
-                <Link
-                  key={page}
-                  to={createPageUrl(page)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                    currentPageName === page
+
+            {/* Nav - center */}
+            <div className="hidden md:flex justify-center">
+              <nav className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-full border border-slate-700">
+                {[
+                  { page: "Home", label: "Discover", icon: Home },
+                  { page: "Search", label: "Search", icon: Search },
+                  { page: "Favorites", label: "Favorites", icon: Star },
+                  { page: "Couple", label: "Couple", icon: Users },
+                ].map(({ page, label, icon: Icon }) => (
+                  <Link
+                    key={page}
+                    to={createPageUrl(page)}
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${currentPageName === page
                       ? "bg-slate-700/60 text-white shadow-sm"
                       : "text-slate-400 hover:text-white"
-                  }`}
+                      }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                ))}
+                <Link
+                  to={createPageUrl("Pricing")}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 ml-2 text-sm font-medium"
                 >
-                  <Icon className="w-4 h-4" />
-                  {label}
+                  <Crown className="w-4 h-4" />
+                  Pro
                 </Link>
-              ))}
-               <Link
-                to={createPageUrl("Pricing")}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 ml-2 text-sm font-medium"
-              >
-                <Crown className="w-4 h-4" />
-                Pro
-              </Link>
-            </nav>
+              </nav>
+            </div>
 
-            <Link to={createPageUrl("Profile")} className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 hover:bg-slate-700 transition-colors">
-                <User className="w-5 h-5 text-slate-400" />
-              </div>
-            </Link>
+            {/* Profile - right */}
+            <div className="flex justify-end">
+              <Link to={createPageUrl("Profile")}>
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 hover:bg-slate-700 transition-colors">
+                  <User className="w-5 h-5 text-slate-400" />
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -83,24 +89,23 @@ export default function Layout({ children, currentPageName }) {
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 z-50">
         <nav className="flex justify-around items-center py-2">
-           {[
-              { page: "Home", label: "Discover", icon: Home },
-              { page: "Search", label: "Search", icon: Search },
-              { page: "Favorites", label: "Favorites", icon: Star },
-              { page: "Couple", label: "Couple", icon: Users },
-              { page: "Profile", label: "Profile", icon: User }
-            ].map(({ page, label, icon: Icon, pro }) => (
-              <Link
-                key={page}
-                to={createPageUrl(page)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-md ${
-                  currentPageName === page ? (pro ? 'text-pink-500' : 'text-indigo-400') : "text-slate-400"
+          {[
+            { page: "Home", label: "Discover", icon: Home },
+            { page: "Search", label: "Search", icon: Search },
+            { page: "Favorites", label: "Favorites", icon: Star },
+            { page: "Couple", label: "Couple", icon: Users },
+            { page: "Profile", label: "Profile", icon: User }
+          ].map(({ page, label, icon: Icon, pro }) => (
+            <Link
+              key={page}
+              to={createPageUrl(page)}
+              className={`flex flex-col items-center gap-1 p-2 rounded-md ${currentPageName === page ? (pro ? 'text-pink-500' : 'text-indigo-400') : "text-slate-400"
                 }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{label}</span>
-              </Link>
-            ))}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-xs font-medium">{label}</span>
+            </Link>
+          ))}
         </nav>
       </div>
     </div>

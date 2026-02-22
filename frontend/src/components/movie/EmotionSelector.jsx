@@ -1,7 +1,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { 
+import {
   Heart, Zap, Smile, Droplets, Sun, Moon, Coffee, Flame,
   ThumbsUp, Frown, Angry, Meh, SmilePlus, Shell, Orbit,
   Glasses, Brain, Leaf, Star,
@@ -36,7 +36,6 @@ const emotions = [
   { name: "surreal", label: "Surreal", icon: Orbit },
   { name: "contemplative", label: "Contemplative", icon: MessageCircleQuestion },
   { name: "rebellious", label: "Rebellious", icon: Sword },
-  { name: "protective", label: "Protective", icon: Shield },
   { name: "energetic", label: "Energetic", icon: Music },
   { name: "dramatic", label: "Dramatic", icon: Crown },
   { name: "comforting", label: "Comforting", icon: Coffee },
@@ -65,7 +64,7 @@ export default function EmotionSelector({ selectedEmotion, onEmotionSelect }) {
         {emotions.map((emotion, index) => {
           const Icon = emotion.icon;
           const isSelected = selectedEmotion === emotion.name;
-          
+
           return (
             <motion.button
               key={emotion.name}
@@ -75,11 +74,10 @@ export default function EmotionSelector({ selectedEmotion, onEmotionSelect }) {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onEmotionSelect(emotion.name)}
-              className={`relative p-3 md:p-4 rounded-xl border transition-all duration-300 ${
-                isSelected
+              className={`relative p-3 md:p-4 rounded-xl border transition-all duration-300 ${isSelected
                   ? "bg-slate-700/50 border-purple-500/50 shadow-lg"
                   : "bg-slate-800/50 border-slate-700 hover:bg-slate-700/50 hover:border-slate-600"
-              }`}
+                }`}
             >
               <div className={`w-8 h-8 md:w-10 md:h-10 mx-auto mb-2 rounded-full flex items-center justify-center transition-colors duration-300 ${isSelected ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                 <Icon className="w-4 h-4 md:w-5 md:h-5" />
@@ -87,7 +85,7 @@ export default function EmotionSelector({ selectedEmotion, onEmotionSelect }) {
               <h3 className={`font-medium text-xs md:text-sm text-center transition-colors duration-300 ${isSelected ? 'text-white' : 'text-slate-300'}`}>
                 {emotion.label}
               </h3>
-              
+
               {isSelected && (
                 <motion.div
                   layoutId="selectedBorder"

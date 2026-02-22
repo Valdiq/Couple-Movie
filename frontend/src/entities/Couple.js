@@ -1,13 +1,26 @@
 import { coupleService } from '../services/coupleService';
 
 export const Couple = {
-    create: async (partnerEmail) => {
-        return coupleService.create(partnerEmail);
+    invite: async (username) => {
+        return coupleService.invite(username);
     },
+    getInvites: async () => {
+        return coupleService.getInvites();
+    },
+    acceptInvite: async (requestId) => {
+        return coupleService.acceptInvite(requestId);
+    },
+    rejectInvite: async (requestId) => {
+        return coupleService.rejectInvite(requestId);
+    },
+    getPartner: async () => {
+        return coupleService.getPartner();
+    },
+    // Legacy compatibility
     get: async () => {
-        return coupleService.get();
+        return coupleService.getPartner();
     },
-    leave: async () => {
-        return coupleService.leave();
+    create: async (username) => {
+        return coupleService.invite(username);
     }
 };

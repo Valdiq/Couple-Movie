@@ -15,7 +15,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
   useEffect(() => {
     const checkFavoriteStatus = async () => {
       if (!movie || !isOpen) return;
-      
+
       // Reset state for new movie
       setIsFavorite(false);
       setIsLoading(true);
@@ -97,7 +97,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-slate-900 to-slate-900" />
               </div>
-              
+
               <Button
                 size="icon"
                 variant="ghost"
@@ -180,14 +180,14 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
             </div>
 
             <div className="px-8 pb-8 space-y-8 -mt-4">
-               {movie.plot && movie.plot !== 'N/A' && (
-                  <p className="text-slate-400 text-base leading-relaxed max-w-3xl">
-                    {movie.plot}
-                  </p>
-                )}
+              {movie.plot && movie.plot !== 'N/A' && (
+                <p className="text-slate-400 text-base leading-relaxed max-w-3xl">
+                  {movie.plot}
+                </p>
+              )}
 
               <div className="flex gap-4">
-                 <Button
+                <Button
                   onClick={handleFavorite}
                   disabled={isLoading}
                   variant="outline"
@@ -262,19 +262,19 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                   </div>
                 )}
                 {movie.writer && movie.writer !== 'N/A' && (
-                   <div className="text-sm">
+                  <div className="text-sm">
                     <h3 className="text-slate-500 font-semibold mb-1">Writer(s)</h3>
                     <p className="text-slate-300">{movie.writer}</p>
                   </div>
                 )}
                 {movie.language && movie.language !== 'N/A' && (
-                   <div className="text-sm">
+                  <div className="text-sm">
                     <h3 className="text-slate-500 font-semibold mb-1">Languages</h3>
                     <p className="text-slate-300">{movie.language}</p>
                   </div>
                 )}
                 {movie.country && movie.country !== 'N/A' && (
-                   <div className="text-sm">
+                  <div className="text-sm">
                     <h3 className="text-slate-500 font-semibold mb-1">Country</h3>
                     <p className="text-slate-300">{movie.country}</p>
 

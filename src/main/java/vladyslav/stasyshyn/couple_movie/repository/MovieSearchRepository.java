@@ -11,4 +11,6 @@ public interface MovieSearchRepository extends ElasticsearchRepository<MovieDocu
     List<MovieDocument> findByTitleContaining(String title);
 
     List<MovieDocument> findByPlotContaining(String plot);
+
+    List<MovieDocument> findByGenreContaining(String genre);
 }
