@@ -31,7 +31,7 @@ export const Movie = {
     },
     search: async (title) => {
         try {
-            const response = await movieService.search(title);
+            const response = await movieService.searchAll(title);
             const searchResults = response?.Search || response?.search || [];
             if (Array.isArray(searchResults)) {
                 return searchResults.map(m => ({
@@ -48,10 +48,22 @@ export const Movie = {
             return [];
         }
     },
+    batchRatings: async (ids) => {
+        try {
+            return await movieService.batchRatings(ids);
+        } catch (e) {
+            return {};
+        }
+    },
     getDetails: async (imdbId) => {
         try {
             const data = await movieService.getDetails(imdbId);
-            return mapOmdbToFrontend(data);
+            const mapped = mapOmdbToFrontend(data);
+            // Include ai_emotions if present
+            if (data.ai_emotions || data.aiEmotions) {
+                mapped.ai_emotions = data.ai_emotions || data.aiEmotions || [];
+            }
+            return mapped;
         } catch (e) {
             console.error("Failed to get movie details", e);
             return null;
@@ -98,6 +110,28 @@ export const Movie = {
             return [];
         } catch (e) {
             console.error("Failed to get by emotion", e);
+            return [];
+        }
+    },
+    getByEmotions: async (emotions) => {
+        try {
+            const results = await movieService.getByEmotions(emotions);
+            if (Array.isArray(results)) {
+                return results.map(m => ({
+                    id: m.imdbID,
+                    title: m.title,
+                    poster: m.poster,
+                    year: m.year,
+                    type: m.type,
+                    genre: m.genre,
+                    director: m.director,
+                    plot: m.plot,
+                    imdb_rating: m.imdbRating,
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to get by emotions", e);
             return [];
         }
     },

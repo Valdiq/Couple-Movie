@@ -16,6 +16,9 @@ export const Couple = {
     getPartner: async () => {
         return coupleService.getPartner();
     },
+    breakCouple: async () => {
+        return coupleService.breakCouple();
+    },
     // Legacy compatibility
     get: async () => {
         return coupleService.getPartner();

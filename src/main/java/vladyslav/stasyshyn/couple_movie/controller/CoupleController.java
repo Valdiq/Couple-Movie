@@ -104,4 +104,20 @@ public class CoupleController {
             return ResponseEntity.internalServerError().body("Error retrieving partner: " + e.getMessage());
         }
     }
+
+    /**
+     * Break the couple link.
+     */
+    @PostMapping("/break")
+    public ResponseEntity<?> breakCouple(@AuthenticationPrincipal User user) {
+        try {
+            coupleService.breakCouple(user);
+            return ResponseEntity.ok(java.util.Map.of("message", "Couple link broken successfully"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("An unexpected error occurred while breaking couple link.");
+        }
+    }
 }

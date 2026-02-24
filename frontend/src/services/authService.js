@@ -35,5 +35,9 @@ export const authService = {
     updateUser: async (data) => {
         const response = await api.put('/auth/me', data);
         return response.data;
+    },
+    resetPassword: async (currentPassword, newPassword) => {
+        const response = await api.post('/auth/reset-password', { currentPassword, newPassword });
+        return response.data;
     }
 };

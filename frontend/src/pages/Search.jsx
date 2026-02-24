@@ -9,6 +9,9 @@ import { Movie } from "@/entities/Movie";
 import MovieCard from "../components/movie/MovieCard";
 import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
+import Pagination from "../components/ui/Pagination";
+
+const ITEMS_PER_PAGE = 15;
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,7 +23,8 @@ export default function Search() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ratings, setRatings] = useState({});
 
   const availableGenres = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
 
@@ -37,10 +41,11 @@ export default function Search() {
     if (selectedGenres.length > 0) {
       fetchByGenres(selectedGenres);
     } else if (selectedEmotions.length > 0) {
-      fetchByEmotion(selectedEmotions[0]);
+      fetchByEmotions(selectedEmotions);
     } else if (searchQuery === "") {
       setFilteredMovies(movies);
     }
+    setCurrentPage(1);
   }, [selectedGenres, selectedEmotions]);
 
   const fetchByGenres = async (genres) => {
@@ -54,13 +59,18 @@ export default function Search() {
     setIsLoading(false);
   };
 
-  const fetchByEmotion = async (emotion) => {
+  const fetchByEmotions = async (emotions) => {
     setIsLoading(true);
     try {
-      const results = await Movie.getByEmotion(emotion);
-      setFilteredMovies(results);
+      if (emotions.length === 1) {
+        const results = await Movie.getByEmotion(emotions[0]);
+        setFilteredMovies(results);
+      } else {
+        const results = await Movie.getByEmotions(emotions);
+        setFilteredMovies(results);
+      }
     } catch (error) {
-      console.error("Error fetching by emotion:", error);
+      console.error("Error fetching by emotions:", error);
     }
     setIsLoading(false);
   };
@@ -73,10 +83,20 @@ export default function Search() {
       return;
     }
     setIsSearching(true);
+    setCurrentPage(1);
     try {
       const results = await Movie.search(searchQuery.trim());
       setMovies(results);
       setFilteredMovies(results);
+
+      // Fetch batch ratings for all search results from ES cache
+      if (results.length > 0) {
+        const ids = results.map(m => m.id).filter(Boolean);
+        if (ids.length > 0) {
+          const ratingsMap = await Movie.batchRatings(ids);
+          setRatings(ratingsMap || {});
+        }
+      }
     } catch (error) {
       console.error("Error searching movies:", error);
     }
@@ -96,7 +116,7 @@ export default function Search() {
   const toggleEmotion = (emotion) => {
     const newEmotions = selectedEmotions.includes(emotion)
       ? selectedEmotions.filter(e => e !== emotion)
-      : [emotion];
+      : [...selectedEmotions, emotion];
     setSelectedEmotions(newEmotions);
     if (newEmotions.length > 0) {
       setSelectedGenres([]);
@@ -107,22 +127,30 @@ export default function Search() {
     setSelectedGenres([]);
     setSelectedEmotions([]);
     setFilteredMovies(movies);
+    setCurrentPage(1);
   };
 
-  const handleMovieSelect = async (movie) => {
-    // Fetch full details from backend before opening the modal
-    setIsLoadingDetails(true);
-    setSelectedMovie(movie); // Show basic info immediately
+  const handleMovieSelect = (movie) => {
+    // Show details immediately with whatever data we have
+    setSelectedMovie({
+      ...movie,
+      imdb_rating: movie.imdb_rating || ratings[movie.id] || null,
+    });
     setIsDetailsOpen(true);
-
-    if (movie.id) {
-      const fullDetails = await Movie.getDetails(movie.id);
-      if (fullDetails) {
-        setSelectedMovie(fullDetails);
-      }
-    }
-    setIsLoadingDetails(false);
   };
+
+  // Pagination
+  const totalPages = Math.ceil(filteredMovies.length / ITEMS_PER_PAGE);
+  const paginatedMovies = filteredMovies.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Merge ratings into movies for display
+  const moviesWithRatings = paginatedMovies.map(m => ({
+    ...m,
+    imdb_rating: m.imdb_rating || ratings[m.id] || null,
+  }));
 
   return (
     <div className="min-h-screen py-8 pb-20 md:pb-8 bg-slate-900 text-slate-300">
@@ -136,7 +164,7 @@ export default function Search() {
             Find Your Next Movie
           </h1>
           <p className="text-lg text-slate-400 max-w-3xl mx-auto">
-            Search by title, filter by genre, or choose an emotion to discover movies.
+            Search by title, filter by genre, or choose emotions to discover movies.
           </p>
         </motion.div>
 
@@ -216,7 +244,7 @@ export default function Search() {
             </div>
 
             <div>
-              <h3 className="text-slate-300 font-medium mb-3">Emotions</h3>
+              <h3 className="text-slate-300 font-medium mb-3">Emotions {selectedEmotions.length > 0 && <span className="text-purple-400 text-sm">({selectedEmotions.length} selected)</span>}</h3>
               <div className="flex flex-wrap gap-2">
                 {availableEmotions.map(emotion => (
                   <Badge
@@ -237,7 +265,7 @@ export default function Search() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} >
             <p className="text-slate-400">
-              {isSearching || isLoading ? 'Loading...' : `Showing ${filteredMovies.length} ${filteredMovies.length === 1 ? 'result' : 'results'}`}
+              {isSearching || isLoading ? 'Loading...' : `Showing ${filteredMovies.length} ${filteredMovies.length === 1 ? 'result' : 'results'}${totalPages > 1 ? ` • Page ${currentPage} of ${totalPages}` : ''}`}
             </p>
           </motion.div>
 
@@ -256,7 +284,7 @@ export default function Search() {
                 animate={{ opacity: 1 }}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
               >
-                {filteredMovies.map((movie, index) => (
+                {moviesWithRatings.map((movie, index) => (
                   <motion.div
                     key={movie.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -268,6 +296,14 @@ export default function Search() {
                 ))}
               </motion.div>
             </AnimatePresence>
+          )}
+
+          {!(isLoading || isSearching) && filteredMovies.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           )}
 
           {!(isLoading || isSearching) && filteredMovies.length === 0 && (

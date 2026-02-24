@@ -43,7 +43,7 @@ public class EmotionGenreService {
                     Map.entry("passionate", List.of("Romance", "Drama")),
                     Map.entry("inspiring", List.of("Drama", "Biography")),
                     Map.entry("thrilling", List.of("Thriller", "Action", "Crime")),
-                    Map.entry("nostalgic", List.of("Drama", "Family", "Comedy")),
+
                     Map.entry("melancholic", List.of("Drama", "Romance")),
                     Map.entry("euphoric", List.of("Comedy", "Music", "Adventure")),
                     Map.entry("adventurous", List.of("Adventure", "Action", "Sci-Fi")),

@@ -19,5 +19,9 @@ export const userFavoriteService = {
         } catch (e) {
             return false;
         }
+    },
+    updateStatus: async (imdbId, data) => {
+        const response = await api.patch(`/favorites/${imdbId}`, data);
+        return response.data;
     }
 };

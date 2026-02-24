@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, Heart, Clock, Calendar, Play } from "lucide-react";
+import { Star, Heart, Clock, Calendar, Play, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 
@@ -14,10 +14,12 @@ export default function MovieCard({ movie, onSelect }) {
   const moviePoster = movie?.Poster || movie?.poster || '';
   const movieYear = movie?.Year || movie?.year || '';
   const movieGenre = movie?.Genre || movie?.genre || '';
-  const movieImdbId = movie?.imdbID || movie?.imdb_id || '';
+  const movieImdbId = movie?.imdbID || movie?.imdb_id || movie?.id || '';
   const movieType = movie?.Type || movie?.type || 'movie';
-  const movieRating = movie?.imdbRating || '';
+  const movieRating = movie?.imdbRating || movie?.imdb_rating || '';
   const movieRuntime = movie?.Runtime || movie?.runtime || '';
+  const movieDirector = movie?.Director || movie?.director || '';
+  const moviePlot = movie?.Plot || movie?.plot || '';
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
@@ -97,16 +99,25 @@ export default function MovieCard({ movie, onSelect }) {
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <Badge variant="outline" className="bg-black/40 text-white/80 border-white/20 text-[10px]">
-              {movieType}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-black/40 text-white/80 border-white/20 text-[10px]">
+                {movieType}
+              </Badge>
+              {movieRating && movieRating !== 'N/A' && (
+                <Badge variant="outline" className="bg-yellow-900/40 text-yellow-300 border-yellow-600/30 text-[10px]">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                  {movieRating}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="p-3">
-        <h3 className="font-semibold text-sm text-slate-200 line-clamp-1 mb-1">{movieTitle}</h3>
-        <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+      <div className="p-3 space-y-1.5">
+        <h3 className="font-semibold text-sm text-slate-200 line-clamp-1">{movieTitle}</h3>
+
+        <div className="flex items-center gap-2 text-xs text-slate-400">
           <Calendar className="w-3 h-3" />
           <span>{movieYear}</span>
           {movieRuntime && movieRuntime !== 'N/A' && (
@@ -117,11 +128,17 @@ export default function MovieCard({ movie, onSelect }) {
           )}
         </div>
 
-        {movieRating && movieRating !== 'N/A' && (
-          <div className="flex items-center gap-1 mb-2">
-            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-            <span className="text-xs font-medium text-slate-300">{movieRating}</span>
+        {movieDirector && movieDirector !== 'N/A' && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <User className="w-3 h-3" />
+            <span className="line-clamp-1">{movieDirector}</span>
           </div>
+        )}
+
+        {moviePlot && moviePlot !== 'N/A' && (
+          <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+            {moviePlot}
+          </p>
         )}
 
         <div className="flex flex-wrap gap-1">

@@ -35,6 +35,8 @@ public class FavoritesController {
             map.put("poster", fav.getPoster());
             map.put("year", fav.getYear());
             map.put("genre", fav.getGenre());
+            map.put("watch_status", fav.getWatchStatus() != null ? fav.getWatchStatus() : "PLAN_TO_WATCH");
+            map.put("user_rating", fav.getUserRating());
             map.put("created_at", fav.getCreatedAt() != null ? fav.getCreatedAt().toString() : null);
             return map;
         }).collect(Collectors.toList());
@@ -71,7 +73,52 @@ public class FavoritesController {
         result.put("id", favorite.getId());
         result.put("imdb_id", favorite.getImdbId());
         result.put("title", favorite.getTitle());
+        result.put("watch_status", favorite.getWatchStatus());
         result.put("message", "Added to favorites");
+        return ResponseEntity.ok(result);
+    }
+
+    @PatchMapping("/{imdbId}")
+    @Transactional
+    public ResponseEntity<?> updateFavorite(@AuthenticationPrincipal User user,
+            @PathVariable String imdbId,
+            @RequestBody Map<String, Object> body) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        var optFav = userFavoriteRepository.findByUserAndImdbId(user, imdbId);
+        if (optFav.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        UserFavorite fav = optFav.get();
+
+        if (body.containsKey("watch_status")) {
+            String status = (String) body.get("watch_status");
+            if ("WATCHED".equals(status) || "PLAN_TO_WATCH".equals(status)) {
+                fav.setWatchStatus(status);
+            }
+        }
+        if (body.containsKey("user_rating")) {
+            Object ratingObj = body.get("user_rating");
+            if (ratingObj == null) {
+                fav.setUserRating(null);
+            } else {
+                double rating = ratingObj instanceof Number ? ((Number) ratingObj).doubleValue()
+                        : Double.parseDouble(ratingObj.toString());
+                if (rating < 0.5 || rating > 5.0) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Rating must be between 0.5 and 5"));
+                }
+                fav.setUserRating(rating);
+            }
+        }
+
+        userFavoriteRepository.save(fav);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("imdb_id", fav.getImdbId());
+        result.put("watch_status", fav.getWatchStatus());
+        result.put("user_rating", fav.getUserRating());
+        result.put("message", "Updated successfully");
         return ResponseEntity.ok(result);
     }
 

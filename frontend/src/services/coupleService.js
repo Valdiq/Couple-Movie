@@ -28,5 +28,9 @@ export const coupleService = {
         } catch (e) {
             return null;
         }
+    },
+    breakCouple: async () => {
+        const response = await api.post('/couple/break');
+        return response.data;
     }
 };

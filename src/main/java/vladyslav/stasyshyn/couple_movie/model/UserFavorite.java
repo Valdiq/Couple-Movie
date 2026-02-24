@@ -42,6 +42,13 @@ public class UserFavorite {
     @Column(name = "genre")
     private String genre;
 
+    @Column(name = "watch_status")
+    @Builder.Default
+    private String watchStatus = "PLAN_TO_WATCH";
+
+    @Column(name = "user_rating")
+    private Double userRating;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

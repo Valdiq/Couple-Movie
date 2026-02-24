@@ -17,4 +17,8 @@ public interface CoupleRequestRepository extends JpaRepository<CoupleRequest, Lo
 
     Optional<CoupleRequest> findBySenderAndReceiverEmailAndStatus(User sender, String receiverEmail,
             RequestStatus status);
+
+    List<CoupleRequest> findBySenderIdAndStatus(Long senderId, RequestStatus status);
+
+    List<CoupleRequest> findByReceiverEmailAndStatusIn(String email, List<RequestStatus> statuses);
 }

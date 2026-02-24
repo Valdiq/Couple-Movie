@@ -23,5 +23,8 @@ export const UserFavorite = {
     },
     delete: async (imdbId) => {
         return userFavoriteService.remove(imdbId);
+    },
+    updateStatus: async (imdbId, data) => {
+        return userFavoriteService.updateStatus(imdbId, data);
     }
 };
