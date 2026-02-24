@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Film, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
@@ -27,7 +26,6 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       return;
     }
 
-    // Start fetching full details immediately in background
     const fetchAll = async () => {
       setIsLoadingDetails(true);
       setIsFavorite(false);
@@ -44,16 +42,11 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
         setUser(null);
       }
 
-      // Fetch full details from backend
       if (movieImdbId) {
         try {
           const fullDetails = await Movie.getDetails(movieImdbId);
-          if (fullDetails) {
-            setFullMovie(fullDetails);
-          }
-        } catch (e) {
-          console.error("Failed to load full details", e);
-        }
+          if (fullDetails) setFullMovie(fullDetails);
+        } catch (e) { }
       }
       setIsLoadingDetails(false);
     };
@@ -62,15 +55,8 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
   }, [movie, isOpen]);
 
   const handleFavorite = async () => {
-    if (!user) {
-      window.location.href = '/login';
-      return;
-    }
-
-    if (!movieImdbId) {
-      console.error("No imdb_id available for this movie");
-      return;
-    }
+    if (!user) { window.location.href = '/login'; return; }
+    if (!movieImdbId) return;
 
     setIsLoading(true);
     try {
@@ -87,9 +73,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
         });
         setIsFavorite(true);
       }
-    } catch (error) {
-      console.error("Error handling favorite:", error);
-    }
+    } catch (error) { }
     setIsLoading(false);
   };
 
@@ -138,7 +122,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="bg-slate-900 text-slate-300 rounded-3xl border border-slate-700/50 max-w-5xl w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800"
+            className="bg-card text-foreground rounded-2xl border border-border max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
@@ -146,13 +130,13 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 {displayMovie.poster && displayMovie.poster !== 'N/A' && (
                   <img src={displayMovie.poster} alt="" className="w-full h-full object-cover opacity-10 blur-lg" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-slate-900 to-slate-900" />
+                <div className="absolute inset-0 bg-gradient-to-b from-card/50 via-card to-card" />
               </div>
 
               <Button
                 size="icon"
                 variant="ghost"
-                className="absolute top-4 right-4 w-10 h-10 bg-black/20 backdrop-blur-sm hover:bg-black/40 text-slate-300 hover:text-white rounded-full z-10"
+                className="absolute top-4 right-4 w-10 h-10 glass hover:bg-secondary text-muted-foreground hover:text-foreground rounded-full z-10"
                 onClick={onClose}
               >
                 <X className="w-5 h-5" />
@@ -164,26 +148,22 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                     <img
                       src={displayMovie.poster}
                       alt={displayMovie.title}
-                      className="w-full rounded-2xl shadow-2xl shadow-black/40"
+                      className="w-full rounded-xl shadow-2xl shadow-black/40"
                     />
                   ) : (
-                    <div className="w-full aspect-[2/3] bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700">
-                      {displayMovie.type === 'series' ? (
-                        <Tv className="w-24 h-24 text-slate-600" />
-                      ) : (
-                        <Film className="w-24 h-24 text-slate-600" />
-                      )}
+                    <div className="w-full aspect-[2/3] bg-secondary rounded-xl flex items-center justify-center border border-border">
+                      <Film className="w-24 h-24 text-muted-foreground" />
                     </div>
                   )}
                 </div>
 
                 <div className="flex-1 space-y-6 pt-4">
                   <div>
-                    <h1 className="text-3xl md:text-5xl font-bold text-slate-100 pr-12">
+                    <h1 className="text-3xl md:text-5xl font-bold text-foreground pr-12">
                       {displayMovie.title}
                     </h1>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-slate-400">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-muted-foreground">
                       {displayMovie.year && displayMovie.year !== 'N/A' && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
@@ -197,7 +177,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                         </div>
                       )}
                       {displayMovie.rated && displayMovie.rated !== 'N/A' && (
-                        <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
+                        <Badge variant="secondary" className="text-muted-foreground">
                           {displayMovie.rated}
                         </Badge>
                       )}
@@ -208,7 +188,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                         </div>
                       )}
                       {isLoadingDetails && (
-                        <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
                       )}
                     </div>
 
@@ -216,9 +196,9 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                       {displayMovie.imdb_rating && displayMovie.imdb_rating !== 'N/A' && displayMovie.imdb_rating > 0 && (
                         <div className="flex items-center gap-2">
                           <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                          <span className="text-slate-200 font-semibold text-lg">{displayMovie.imdb_rating}</span>
+                          <span className="text-foreground font-semibold text-lg">{displayMovie.imdb_rating}</span>
                           {displayMovie.imdb_votes && displayMovie.imdb_votes !== 'N/A' && (
-                            <span className="text-slate-400 text-sm">({displayMovie.imdb_votes})</span>
+                            <span className="text-muted-foreground text-sm">({displayMovie.imdb_votes})</span>
                           )}
                         </div>
                       )}
@@ -235,7 +215,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
             <div className="px-8 pb-8 space-y-8 -mt-4">
               {displayMovie.plot && displayMovie.plot !== 'N/A' && (
-                <p className="text-slate-400 text-base leading-relaxed max-w-3xl">
+                <p className="text-muted-foreground text-base leading-relaxed max-w-3xl">
                   {displayMovie.plot}
                 </p>
               )}
@@ -245,9 +225,9 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                   onClick={handleFavorite}
                   disabled={isLoading}
                   variant="outline"
-                  className="flex-1 min-w-[200px] bg-slate-800/50 hover:bg-slate-700/50 text-slate-200 border-slate-700"
+                  className="flex-1 min-w-[200px] border-border hover:bg-secondary text-foreground"
                 >
-                  <Heart className={`w-4 h-4 mr-2 transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+                  <Heart className={`w-4 h-4 mr-2 transition-colors ${isFavorite ? 'fill-accent text-accent' : 'text-muted-foreground'}`} />
                   {isFavorite ? 'In Favorites' : 'Add to Favorites'}
                 </Button>
                 {user && (
@@ -255,12 +235,12 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                     onClick={handleAddToCouple}
                     disabled={addingToCouple}
                     variant="outline"
-                    className="flex-1 min-w-[200px] bg-slate-800/50 hover:bg-purple-900/30 text-slate-200 border-slate-700 hover:border-purple-500/50"
+                    className="flex-1 min-w-[200px] border-border hover:bg-primary/10 hover:border-primary/50 text-foreground"
                   >
                     {addingToCouple ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <PlusCircle className="w-4 h-4 mr-2 text-purple-400" />
+                      <PlusCircle className="w-4 h-4 mr-2 text-primary" />
                     )}
                     Add to Couple List
                   </Button>
@@ -268,9 +248,9 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
               </div>
 
               {coupleMessage && (
-                <div className={`p-3 rounded-xl text-center text-sm ${coupleMessage.type === 'success'
-                  ? 'bg-green-900/30 border border-green-500/30 text-green-300'
-                  : 'bg-red-900/30 border border-red-500/30 text-red-300'
+                <div className={`p-3 rounded-xl text-center text-sm border ${coupleMessage.type === 'success'
+                  ? 'bg-green-900/20 border-green-500/30 text-green-400'
+                  : 'bg-red-900/20 border-red-500/30 text-red-400'
                   }`}>
                   {coupleMessage.text}
                 </div>
@@ -278,16 +258,13 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
               {displayMovie.ai_emotions && displayMovie.ai_emotions.length > 0 && (
                 <div>
-                  <h3 className="text-slate-200 font-semibold mb-3 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-foreground font-semibold mb-3 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-primary" />
                     AI-Analyzed Emotions
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {displayMovie.ai_emotions.map(emotion => (
-                      <Badge
-                        key={emotion}
-                        className="bg-slate-800 text-slate-300 border-slate-700 capitalize"
-                      >
+                      <Badge key={emotion} variant="secondary" className="text-muted-foreground capitalize">
                         {emotion}
                       </Badge>
                     ))}
@@ -297,14 +274,10 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
               {displayMovie.genre && displayMovie.genre !== 'N/A' && (
                 <div>
-                  <h3 className="text-slate-200 font-semibold mb-3">Genres</h3>
+                  <h3 className="text-foreground font-semibold mb-3">Genres</h3>
                   <div className="flex flex-wrap gap-2">
                     {formatGenres(displayMovie.genre).map(genre => (
-                      <Badge
-                        key={genre}
-                        variant="outline"
-                        className="bg-slate-800 text-slate-300 border-slate-700"
-                      >
+                      <Badge key={genre} variant="secondary" className="text-muted-foreground">
                         {genre}
                       </Badge>
                     ))}
@@ -314,17 +287,13 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
               {displayMovie.actors && displayMovie.actors !== 'N/A' && (
                 <div>
-                  <h3 className="text-slate-200 font-semibold mb-3 flex items-center gap-2">
+                  <h3 className="text-foreground font-semibold mb-3 flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Cast
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {formatCast(displayMovie.actors).slice(0, 10).map(actor => (
-                      <Badge
-                        key={actor}
-                        variant="outline"
-                        className="bg-indigo-900/50 text-indigo-300 border-indigo-700/50"
-                      >
+                      <Badge key={actor} variant="outline" className="bg-primary/10 text-primary border-primary/30">
                         {actor}
                       </Badge>
                     ))}
@@ -332,41 +301,40 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-4 border-t border-slate-800">
+              <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-4 border-t border-border">
                 {displayMovie.director && displayMovie.director !== 'N/A' && (
                   <div className="text-sm">
-                    <h3 className="text-slate-500 font-semibold mb-1">Director</h3>
-                    <p className="text-slate-300">{displayMovie.director}</p>
+                    <h3 className="text-muted-foreground font-semibold mb-1">Director</h3>
+                    <p className="text-foreground">{displayMovie.director}</p>
                   </div>
                 )}
                 {displayMovie.writer && displayMovie.writer !== 'N/A' && (
                   <div className="text-sm">
-                    <h3 className="text-slate-500 font-semibold mb-1">Writer(s)</h3>
-                    <p className="text-slate-300">{displayMovie.writer}</p>
+                    <h3 className="text-muted-foreground font-semibold mb-1">Writer(s)</h3>
+                    <p className="text-foreground">{displayMovie.writer}</p>
                   </div>
                 )}
                 {displayMovie.language && displayMovie.language !== 'N/A' && (
                   <div className="text-sm">
-                    <h3 className="text-slate-500 font-semibold mb-1">Languages</h3>
-                    <p className="text-slate-300">{displayMovie.language}</p>
+                    <h3 className="text-muted-foreground font-semibold mb-1">Languages</h3>
+                    <p className="text-foreground">{displayMovie.language}</p>
                   </div>
                 )}
                 {displayMovie.country && displayMovie.country !== 'N/A' && (
                   <div className="text-sm">
-                    <h3 className="text-slate-500 font-semibold mb-1">Country</h3>
-                    <p className="text-slate-300">{displayMovie.country}</p>
-
+                    <h3 className="text-muted-foreground font-semibold mb-1">Country</h3>
+                    <p className="text-foreground">{displayMovie.country}</p>
                   </div>
                 )}
               </div>
 
               {displayMovie.awards && displayMovie.awards !== 'N/A' && (
-                <div className="pt-4 border-t border-slate-800">
-                  <h3 className="text-slate-200 font-semibold mb-2 flex items-center gap-2">
+                <div className="pt-4 border-t border-border">
+                  <h3 className="text-foreground font-semibold mb-2 flex items-center gap-2">
                     <Award className="w-4 h-4" />
                     Awards
                   </h3>
-                  <p className="text-slate-400 text-sm">{displayMovie.awards}</p>
+                  <p className="text-muted-foreground text-sm">{displayMovie.awards}</p>
                 </div>
               )}
             </div>

@@ -1,50 +1,34 @@
-
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Check, X, Heart, Users, Sparkles, Crown, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, Heart, Users, Sparkles, Crown, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User } from "@/entities/User"; // Ensure User entity is correctly imported and available
+import { User } from "@/entities/User";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [openFaq, setOpenFaq] = useState(null);
 
   useEffect(() => {
     const checkUser = async () => {
-      try {
-        const currentUser = await User.me();
-        setUser(currentUser);
-      } catch (e) {
-        setUser(null);
-      }
+      try { const currentUser = await User.me(); setUser(currentUser); } catch (e) { setUser(null); }
       setIsLoading(false);
     };
     checkUser();
   }, []);
 
   const handleUpgrade = async () => {
-    if (!user) {
-        User.loginWithRedirect(window.location.href);
-        return;
-    }
-    
-    // In a real app, this would redirect to a payment processor like Stripe.
-    // For this demo, we'll just update the user's plan directly.
+    if (!user) { User.loginWithRedirect(window.location.href); return; }
     try {
-        setIsLoading(true);
-        // Assuming User.updateMyUserData is an asynchronous function that updates the user's plan
-        await User.updateMyUserData({ subscription_plan: 'pro' });
-        const updatedUser = await User.me(); // Fetch the updated user data
-        setUser(updatedUser);
-    } catch (error) {
-        console.error("Failed to upgrade:", error);
-        alert("There was an error processing your upgrade. Please try again.");
-    } finally {
-        setIsLoading(false);
-    }
+      setIsLoading(true);
+      await User.updateMyUserData({ subscription_plan: 'pro' });
+      const updatedUser = await User.me();
+      setUser(updatedUser);
+    } catch (error) { alert("Error processing upgrade. Please try again."); }
+    finally { setIsLoading(false); }
   };
 
   const freeFeatures = [
@@ -69,181 +53,136 @@ export default function Pricing() {
     "Early access to new features"
   ];
 
+  const faqs = [
+    { q: "Can I try Pro features before subscribing?", a: "Yes! We offer a 7-day free trial for all Pro features. Cancel anytime during the trial period." },
+    { q: "What happens if my partner doesn't have Pro?", a: "Both partners need Pro to access Couple Space features. You can invite your partner and they'll get a special trial offer." },
+    { q: "Can I use the app with friends?", a: "Absolutely! The 'Couple Space' works perfectly for friends who want to share movie recommendations and watch together." },
+    { q: "How does the mutual movie matching work?", a: "Our AI analyzes both partners' preferences, ratings, and mood selections to suggest movies you'll both enjoy." }
+  ];
+
+  const comparisonRows = [
+    ["Personal movie discovery", true, true],
+    ["AI-powered search", true, true],
+    ["Favorites list", "50 movies", "Unlimited"],
+    ["Couple Space", false, true],
+    ["Shared watchlists", false, true],
+    ["Movie matching system", false, true],
+    ["Individual ratings", false, true],
+    ["Watch history tracking", false, true],
+    ["Priority support", false, true],
+    ["Early access features", false, true]
+  ];
+
   return (
-    <div className="min-h-screen py-16 pb-20 md:pb-16 bg-slate-900">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background pb-16">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
-        >
-          <h1 className="text-4xl md:text-6xl font-bold text-slate-100 mb-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-16 text-center">
+          <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-6xl">
             Choose Your Perfect
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Movie Experience
-            </span>
+            <span className="gradient-text">Movie Experience</span>
           </h1>
-          <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+          <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
             Start free with personal movie discovery, or upgrade to unlock the full couple experience
           </p>
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
           {/* Free Plan */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-slate-700/50 p-8 relative flex flex-col"
-          >
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-slate-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-600/50">
-                <Heart className="w-8 h-8 text-slate-400" />
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+            className="flex flex-col rounded-2xl border border-border bg-card p-8">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-secondary">
+                <Heart className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-100 mb-2">Free</h3>
-              <div className="text-4xl font-bold text-slate-100 mb-2">
-                $0
-                <span className="text-lg font-normal text-slate-400">/month</span>
-              </div>
-              <p className="text-slate-400">Perfect for individual movie lovers</p>
+              <h3 className="mb-2 text-2xl font-bold text-foreground">Free</h3>
+              <div className="mb-2 text-4xl font-bold text-foreground">$0<span className="text-lg font-normal text-muted-foreground">/month</span></div>
+              <p className="text-muted-foreground">Perfect for individual movie lovers</p>
             </div>
-
-            <ul className="space-y-4 mb-8 flex-grow">
-              {freeFeatures.map((feature, index) => (
-                <li key={index} className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                  <span className="text-slate-300">{feature}</span>
+            <ul className="mb-8 flex-grow space-y-4">
+              {freeFeatures.map((feature, i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <Check className="h-5 w-5 flex-shrink-0 text-green-400" />
+                  <span className="text-foreground">{feature}</span>
                 </li>
               ))}
             </ul>
-
-            <Button 
-              className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 py-3 text-lg mt-auto"
+            <Button className="mt-auto w-full bg-secondary py-3 text-lg text-foreground hover:bg-secondary/80"
               disabled={user?.subscription_plan === 'free'}
-              onClick={() => !user && User.login()}
-            >
+              onClick={() => !user && User.login()}>
               {user?.subscription_plan === 'free' ? "Your Current Plan" : (user ? "Current Plan" : "Get Started Free")}
             </Button>
           </motion.div>
 
           {/* Premium Plan */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-slate-900 rounded-3xl border border-pink-500/30 p-8 relative overflow-hidden flex flex-col"
-          >
-            <div className="absolute -inset-px bg-gradient-to-br from-purple-600/20 to-pink-600/20 blur-xl" />
-            
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+            className="relative flex flex-col overflow-hidden rounded-2xl border border-primary/30 bg-card p-8">
+            <div className="pointer-events-none absolute -inset-px bg-gradient-to-br from-primary/10 to-accent/10 blur-xl" />
             {user?.subscription_plan === 'pro' ? (
-                <Badge className="absolute top-6 right-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white border-none">
-                    <Check className="w-3 h-3 mr-1" />
-                    Active Plan
-                </Badge>
+              <Badge className="absolute right-6 top-6 border-0 bg-gradient-to-r from-green-500 to-emerald-600 text-white gap-1">
+                <Check className="h-3 w-3" /> Active Plan
+              </Badge>
             ) : (
-                <Badge className="absolute top-6 right-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-none">
-                    <Crown className="w-3 h-3 mr-1" />
-                    Most Popular
-                </Badge>
+              <Badge className="absolute right-6 top-6 border-0 bg-gradient-to-r from-primary to-accent text-primary-foreground gap-1">
+                <Crown className="h-3 w-3" /> Most Popular
+              </Badge>
             )}
-
-
-            <div className="relative text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
+            <div className="relative mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent">
+                <Users className="h-8 w-8 text-primary-foreground" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">CoupleMovie Pro</h3>
-              <div className="text-4xl font-bold text-white mb-2">
-                $15
-                <span className="text-lg font-normal text-slate-400">/month</span>
-              </div>
-              <p className="text-slate-300">The ultimate experience for couples & friends</p>
+              <h3 className="mb-2 text-2xl font-bold text-foreground">CoupleMovie Pro</h3>
+              <div className="mb-2 text-4xl font-bold text-foreground">$15<span className="text-lg font-normal text-muted-foreground">/month</span></div>
+              <p className="text-muted-foreground">The ultimate experience for couples & friends</p>
             </div>
-
-            <ul className="relative space-y-4 mb-8 flex-grow">
-              {premiumFeatures.map((feature, index) => (
-                <li key={index} className="flex items-center gap-3">
-                  <div className="w-5 h-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Check className="w-3 h-3 text-white" />
+            <ul className="relative mb-8 flex-grow space-y-4">
+              {premiumFeatures.map((feature, i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary to-accent">
+                    <Check className="h-3 w-3 text-primary-foreground" />
                   </div>
-                  <span className={`${index === 0 ? 'text-slate-400' : 'text-slate-200'} ${index > 0 && index <= 6 ? 'font-medium' : ''}`}>
+                  <span className={`${i === 0 ? 'text-muted-foreground' : 'text-foreground'} ${i > 0 && i <= 6 ? 'font-medium' : ''}`}>
                     {feature}
                   </span>
-                  {index > 0 && index <= 6 && (
-                    <Sparkles className="w-4 h-4 text-pink-400 ml-auto" />
-                  )}
+                  {i > 0 && i <= 6 && <Sparkles className="ml-auto h-4 w-4 text-accent" />}
                 </li>
               ))}
             </ul>
-
-            <Button 
-              onClick={handleUpgrade}
-              disabled={isLoading || user?.subscription_plan === 'pro'}
-              className="relative w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white py-3 text-lg font-semibold mt-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Zap className="w-5 h-5 mr-2" />
+            <Button onClick={handleUpgrade} disabled={isLoading || user?.subscription_plan === 'pro'}
+              className="relative mt-auto w-full bg-gradient-to-r from-primary to-accent py-3 text-lg font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 gap-2">
+              <Zap className="h-5 w-5" />
               {user?.subscription_plan === 'pro' ? 'You are a Pro' : 'Upgrade to Pro'}
             </Button>
-            
-            <p className="relative text-center text-slate-400 text-sm mt-4">
-              Cancel anytime • 7-day free trial
-            </p>
+            <p className="relative mt-4 text-center text-sm text-muted-foreground">Cancel anytime · 7-day free trial</p>
           </motion.div>
         </div>
 
         {/* Feature Comparison */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-20"
-        >
-          <h2 className="text-3xl font-bold text-slate-100 text-center mb-12">
-            Feature Comparison
-          </h2>
-          
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 overflow-hidden">
-            <div className="grid grid-cols-3 gap-4 p-6 bg-slate-700/20">
-              <div></div>
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mt-20">
+          <h2 className="mb-12 text-center text-3xl font-bold text-foreground">Feature Comparison</h2>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="grid grid-cols-3 gap-4 bg-secondary/50 p-6">
+              <div />
+              <div className="text-center"><h4 className="font-semibold text-foreground">Free</h4></div>
               <div className="text-center">
-                <h4 className="font-semibold text-slate-200">Free</h4>
-              </div>
-              <div className="text-center">
-                <h4 className="font-semibold text-slate-200">Pro</h4>
-                <Badge className="mt-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs">$15/mo</Badge>
+                <h4 className="font-semibold text-foreground">Pro</h4>
+                <Badge className="mt-1 border-0 bg-gradient-to-r from-primary to-accent text-xs text-primary-foreground">$15/mo</Badge>
               </div>
             </div>
-            
-            {[
-              ["Personal movie discovery", true, true],
-              ["AI-powered search", true, true],
-              ["Favorites list", "50 movies", "Unlimited"],
-              ["Couple Space", false, true],
-              ["Shared watchlists", false, true],
-              ["Movie matching system", false, true],
-              ["Individual ratings", false, true],
-              ["Watch history tracking", false, true],
-              ["Priority support", false, true],
-              ["Early access features", false, true]
-            ].map(([feature, free, pro], index) => (
-              <div key={index} className="grid grid-cols-3 gap-4 p-4 border-t border-slate-700">
-                <div className="text-slate-300 font-medium">{feature}</div>
+            {comparisonRows.map(([feature, free, pro], i) => (
+              <div key={i} className="grid grid-cols-3 gap-4 border-t border-border p-4">
+                <div className="font-medium text-foreground">{feature}</div>
                 <div className="text-center">
                   {typeof free === 'boolean' ? (
-                    free ? <Check className="w-5 h-5 text-green-400 mx-auto" /> : <X className="w-5 h-5 text-slate-500 mx-auto" />
-                  ) : (
-                    <span className="text-slate-400 text-sm">{free}</span>
-                  )}
+                    free ? <Check className="mx-auto h-5 w-5 text-green-400" /> : <X className="mx-auto h-5 w-5 text-muted-foreground/50" />
+                  ) : <span className="text-sm text-muted-foreground">{free}</span>}
                 </div>
                 <div className="text-center">
                   {typeof pro === 'boolean' ? (
-                    pro ? <Check className="w-5 h-5 text-pink-500 mx-auto" /> : <X className="w-5 h-5 text-slate-500 mx-auto" />
-                  ) : (
-                    <span className="text-slate-200 text-sm font-medium">{pro}</span>
-                  )}
+                    pro ? <Check className="mx-auto h-5 w-5 text-accent" /> : <X className="mx-auto h-5 w-5 text-muted-foreground/50" />
+                  ) : <span className="text-sm font-medium text-foreground">{pro}</span>}
                 </div>
               </div>
             ))}
@@ -251,65 +190,42 @@ export default function Pricing() {
         </motion.div>
 
         {/* FAQ */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="mt-20 text-center"
-        >
-          <h2 className="text-3xl font-bold text-slate-100 mb-8">
-            Frequently Asked Questions
-          </h2>
-          <div className="max-w-3xl mx-auto space-y-6 text-left">
-            {[
-              {
-                q: "Can I try Pro features before subscribing?",
-                a: "Yes! We offer a 7-day free trial for all Pro features. Cancel anytime during the trial period."
-              },
-              {
-                q: "What happens if my partner doesn't have Pro?",
-                a: "Both partners need Pro to access Couple Space features. You can invite your partner and they'll get a special trial offer."
-              },
-              {
-                q: "Can I use the app with friends instead of a romantic partner?",
-                a: "Absolutely! The 'Couple Space' works perfectly for friends who want to share movie recommendations and watch together."
-              },
-              {
-                q: "How does the mutual movie matching work?",
-                a: "Our AI analyzes both partners' preferences, ratings, and mood selections to suggest movies you'll both enjoy. The more you use the app, the better the recommendations become."
-              }
-            ].map(({ q, a }, index) => (
-              <div key={index} className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
-                <h3 className="font-semibold text-slate-100 mb-2">{q}</h3>
-                <p className="text-slate-400">{a}</p>
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-20 text-center">
+          <h2 className="mb-8 text-3xl font-bold text-foreground">Frequently Asked Questions</h2>
+          <div className="mx-auto max-w-3xl space-y-4 text-left">
+            {faqs.map(({ q, a }, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="flex w-full items-center justify-between p-5 text-left font-semibold text-foreground">
+                  {q}
+                  {openFaq === i ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                </button>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                      <p className="px-5 pb-5 text-muted-foreground">{a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
         </motion.div>
 
         {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="mt-20 text-center"
-        >
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-12 border border-slate-700 shadow-lg">
-            <h2 className="text-3xl font-bold text-slate-100 mb-4">
-              Ready to Transform Your Movie Nights?
-            </h2>
-            <p className="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="mt-20 text-center">
+          <div className="rounded-2xl border border-border bg-gradient-to-b from-primary/5 to-transparent p-12">
+            <h2 className="mb-4 text-3xl font-bold text-foreground">Ready to Transform Your Movie Nights?</h2>
+            <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
               Join thousands of couples who've discovered their perfect movie matches with CoupleMovie Pro
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex justify-center gap-4">
               <Link to={createPageUrl("Home")}>
-                <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-                  Try Free Version
-                </Button>
+                <Button variant="outline" className="border-border text-foreground hover:bg-secondary">Try Free Version</Button>
               </Link>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white" onClick={handleUpgrade} disabled={isLoading || user?.subscription_plan === 'pro'}>
-                <Crown className="w-4 h-4 mr-2" />
-                Start Pro Trial
+              <Button className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 gap-2"
+                onClick={handleUpgrade} disabled={isLoading || user?.subscription_plan === 'pro'}>
+                <Crown className="h-4 w-4" /> Start Pro Trial
               </Button>
             </div>
           </div>

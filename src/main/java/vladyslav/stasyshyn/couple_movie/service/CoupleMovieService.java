@@ -37,8 +37,9 @@ public class CoupleMovieService {
             map.put("genre", m.getGenre());
             map.put("watch_status", m.getWatchStatus());
             map.put("added_by_user_id", m.getAddedByUserId());
-            map.put("user_you_added", m.getAddedByUserId() != null && m.getAddedByUserId().equals(user.getId()));
-            map.put("partner_added", m.getAddedByUserId() != null && !m.getAddedByUserId().equals(user.getId()));
+            boolean isAdder = m.getAddedByUserId() != null && m.getAddedByUserId().equals(user.getId());
+            map.put("user_you_added", isAdder ? m.isUserYouAdded() : m.isPartnerAdded());
+            map.put("partner_added", isAdder ? m.isPartnerAdded() : m.isUserYouAdded());
             map.put("is_match", isMatch(coupleKey, m.getImdbId(), user));
             // Per-user ratings: figure out which slot is "you" and which is "partner"
             if (m.getUser1Id() != null && m.getUser1Id().equals(user.getId())) {

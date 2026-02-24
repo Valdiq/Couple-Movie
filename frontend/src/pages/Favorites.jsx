@@ -1,16 +1,15 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trash2, Star, Loader2, Eye, BookmarkCheck, Film } from "lucide-react";
+import { Heart, Trash2, Star, Loader2, Eye, Film } from "lucide-react";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { User } from "@/entities/User";
 import MovieDetails from "../components/movie/MovieDetails";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ChatWidget from "../components/chat/ChatWidget";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/lib/AuthContext';
 import Pagination from "../components/ui/Pagination";
+import { Button } from "@/components/ui/button";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -26,33 +25,25 @@ function StarRating({ rating, onChange, disabled, size = 'md' }) {
         const currentRating = hover !== null ? hover : (rating || 0);
         const isHalfFilled = currentRating >= halfVal && currentRating < fullVal;
         const isFullFilled = currentRating >= fullVal;
-
         return (
           <div key={starNum} className={`relative ${starSize}`} style={{ cursor: disabled ? 'default' : 'pointer' }}>
-            <div
-              className="absolute inset-0 w-1/2 overflow-hidden z-10"
+            <div className="absolute inset-0 w-1/2 overflow-hidden z-10"
               onMouseEnter={() => !disabled && setHover(halfVal)}
               onMouseLeave={() => !disabled && setHover(null)}
-              onClick={(e) => { e.stopPropagation(); !disabled && onChange(halfVal); }}
-            >
-              <Star className={`${starSize} transition-colors ${(isHalfFilled || isFullFilled) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-600'}`} />
+              onClick={(e) => { e.stopPropagation(); !disabled && onChange(halfVal); }}>
+              <Star className={`${starSize} transition-colors ${(isHalfFilled || isFullFilled) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
             </div>
-            <div
-              className="absolute inset-0 z-10"
-              style={{ clipPath: 'inset(0 0 0 50%)' }}
+            <div className="absolute inset-0 z-10" style={{ clipPath: 'inset(0 0 0 50%)' }}
               onMouseEnter={() => !disabled && setHover(fullVal)}
               onMouseLeave={() => !disabled && setHover(null)}
-              onClick={(e) => { e.stopPropagation(); !disabled && onChange(fullVal); }}
-            >
-              <Star className={`${starSize} transition-colors ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-slate-600'}`} />
+              onClick={(e) => { e.stopPropagation(); !disabled && onChange(fullVal); }}>
+              <Star className={`${starSize} transition-colors ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
             </div>
-            <Star className={`${starSize} ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : isHalfFilled ? 'text-slate-600' : 'text-slate-600'}`} />
+            <Star className={`${starSize} ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
           </div>
         );
       })}
-      {(rating || 0) > 0 && (
-        <span className="text-xs text-yellow-400 ml-1 font-semibold">{rating}</span>
-      )}
+      {(rating || 0) > 0 && <span className="text-xs text-yellow-400 ml-1 font-semibold">{rating}</span>}
     </div>
   );
 }
@@ -78,15 +69,13 @@ export default function Favorites() {
         const favs = await UserFavorite.list();
         setFavorites(Array.isArray(favs) ? favs : []);
       }
-    } catch (error) { console.error("Error loading favorites:", error); }
+    } catch (error) { }
     setIsLoading(false);
   };
 
   const removeFavorite = async (imdbId) => {
-    try {
-      await UserFavorite.remove(imdbId);
-      setFavorites(prev => prev.filter(fav => fav.imdb_id !== imdbId));
-    } catch (error) { console.error("Error removing favorite:", error); }
+    try { await UserFavorite.remove(imdbId); setFavorites(prev => prev.filter(fav => fav.imdb_id !== imdbId)); }
+    catch (error) { }
   };
 
   const toggleWatchStatus = async (fav) => {
@@ -96,7 +85,7 @@ export default function Favorites() {
       setFavorites(prev => prev.map(f =>
         f.imdb_id === fav.imdb_id ? { ...f, watch_status: newStatus, user_rating: newStatus === 'PLAN_TO_WATCH' ? null : f.user_rating } : f
       ));
-    } catch (error) { console.error("Error updating status:", error); }
+    } catch (error) { }
   };
 
   const handleRating = async (fav, rating) => {
@@ -105,7 +94,7 @@ export default function Favorites() {
       setFavorites(prev => prev.map(f =>
         f.imdb_id === fav.imdb_id ? { ...f, user_rating: rating, watch_status: 'WATCHED' } : f
       ));
-    } catch (error) { console.error("Error setting rating:", error); }
+    } catch (error) { }
   };
 
   const handleMovieSelect = (fav) => {
@@ -114,16 +103,16 @@ export default function Favorites() {
   };
 
   if (isLoadingAuth || isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-400" /></div>;
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <Heart className="w-16 h-16 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-200 mb-4">Please log in to view your favorites</h2>
-          <a href="/login" className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-semibold">Log In</a>
+          <Heart className="mx-auto mb-4 h-16 w-16 text-accent" />
+          <h2 className="mb-4 text-2xl font-bold text-foreground">Please log in to view your favorites</h2>
+          <a href="/login" className="inline-block rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 font-semibold text-primary-foreground">Log In</a>
         </div>
       </div>
     );
@@ -139,27 +128,39 @@ export default function Favorites() {
   const paginatedFavorites = filteredFavorites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <div className="min-h-screen py-8 pb-20 md:pb-8 bg-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-          <div className="inline-block bg-slate-800/50 p-3 rounded-full mb-4 border border-slate-700"><Heart className="w-8 h-8 text-rose-500 fill-current" /></div>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-100">Your Favorites</h1>
+    <div className="min-h-screen bg-background pb-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
+          <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
+            <Heart className="h-7 w-7 text-accent" />
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+            My <span className="gradient-text">Favorites</span>
+          </h1>
         </motion.div>
 
         {/* Stats + Tabs */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-          <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/80">
-            <div className="flex items-center justify-center gap-6 mb-4">
-              <div className="text-center"><h3 className="text-2xl font-bold text-slate-100">{favorites.length}</h3><p className="text-slate-400 text-xs">Total</p></div>
-              <div className="w-px h-8 bg-slate-700"></div>
-              <div className="text-center"><h3 className="text-2xl font-bold text-green-400">{watchedCount}</h3><p className="text-slate-400 text-xs">Watched</p></div>
-              <div className="w-px h-8 bg-slate-700"></div>
-              <div className="text-center"><h3 className="text-2xl font-bold text-blue-400">{planCount}</h3><p className="text-slate-400 text-xs">Plan to Watch</p></div>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="mb-4 flex items-center justify-center gap-6">
+              <div className="text-center"><h3 className="text-2xl font-bold text-foreground">{favorites.length}</h3><p className="text-xs text-muted-foreground">Total</p></div>
+              <div className="h-8 w-px bg-border" />
+              <div className="text-center"><h3 className="text-2xl font-bold text-green-400">{watchedCount}</h3><p className="text-xs text-muted-foreground">Watched</p></div>
+              <div className="h-8 w-px bg-border" />
+              <div className="text-center"><h3 className="text-2xl font-bold text-primary">{planCount}</h3><p className="text-xs text-muted-foreground">Plan to Watch</p></div>
             </div>
-            <div className="flex gap-2 justify-center">
-              {[{ key: 'all', label: 'All', count: favorites.length }, { key: 'plan', label: 'Plan to Watch', count: planCount }, { key: 'watched', label: 'Watched', count: watchedCount }].map(tab => (
+            <div className="flex justify-center gap-2">
+              {[
+                { key: 'all', label: 'All', count: favorites.length },
+                { key: 'plan', label: 'Plan to Watch', count: planCount },
+                { key: 'watched', label: 'Watched', count: watchedCount }
+              ].map(tab => (
                 <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === tab.key ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'}`}>
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab.key
+                      ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg'
+                      : 'border border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                >
                   {tab.label} ({tab.count})
                 </button>
               ))}
@@ -170,43 +171,40 @@ export default function Favorites() {
         {/* Cards Grid */}
         {filteredFavorites.length > 0 && (
           <AnimatePresence>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {paginatedFavorites.map((fav, index) => (
-                <motion.div key={fav.id || fav.imdb_id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="relative group">
-                  <div className="bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700 hover:border-slate-600 transition-all cursor-pointer" onClick={() => handleMovieSelect(fav)}>
-                    <div className="relative aspect-[2/3] bg-slate-800 overflow-hidden">
+                <motion.div key={fav.id || fav.imdb_id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
+                  <div className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30" onClick={() => handleMovieSelect(fav)}>
+                    <div className="relative aspect-[2/3] overflow-hidden">
                       {fav.poster && fav.poster !== 'N/A' && fav.poster !== '' ? (
-                        <img src={fav.poster} alt={fav.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={fav.poster} alt={fav.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-700"><Film className="w-16 h-16 text-slate-500" /></div>
+                        <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-16 w-16 text-muted-foreground" /></div>
                       )}
-                      {/* Remove */}
-                      <button className="absolute top-3 right-3 w-8 h-8 bg-black/60 backdrop-blur-sm hover:bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full flex items-center justify-center"
+                      <button className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
                         onClick={(e) => { e.stopPropagation(); removeFavorite(fav.imdb_id); }}>
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
 
-                    <div className="p-3 space-y-2">
-                      <h3 className="text-slate-200 font-semibold text-sm line-clamp-2">{fav.title || 'Untitled'}</h3>
-                      {fav.year && <p className="text-slate-500 text-xs">{fav.year}</p>}
+                    <div className="space-y-2 p-3">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{fav.title || 'Untitled'}</h3>
+                      {fav.year && <p className="text-xs text-muted-foreground">{fav.year}</p>}
 
-                      {/* PROMINENT STATUS BUTTON */}
                       <button
-                        className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${fav.watch_status === 'WATCHED'
-                          ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30'
-                          : 'bg-purple-600/20 border border-purple-500/30 text-purple-400 hover:bg-purple-600/30'
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${fav.watch_status === 'WATCHED'
+                            ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                            : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
                           }`}
                         onClick={(e) => { e.stopPropagation(); toggleWatchStatus(fav); }}
                         title={fav.watch_status === 'WATCHED' ? 'Click to move back to Plan to Watch' : 'Click to mark as Watched'}
                       >
-                        {fav.watch_status === 'WATCHED' ? <><Eye className="w-3.5 h-3.5" /> ✓ Watched</> : <><Eye className="w-3.5 h-3.5" /> Mark as Watched</>}
+                        {fav.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
                       </button>
 
-                      {/* STAR RATING for watched */}
                       {fav.watch_status === 'WATCHED' && (
                         <div onClick={(e) => e.stopPropagation()} className="pt-1">
-                          <p className="text-slate-500 text-[10px] mb-1">Your Rating:</p>
+                          <p className="mb-1 text-[10px] text-muted-foreground">Your Rating:</p>
                           <StarRating rating={fav.user_rating} onChange={(r) => handleRating(fav, r)} disabled={false} size="sm" />
                         </div>
                       )}
@@ -221,13 +219,15 @@ export default function Favorites() {
         {filteredFavorites.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
 
         {filteredFavorites.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-            <div className="text-6xl mb-4">💔</div>
-            <h3 className="text-xl font-semibold text-slate-200 mb-2">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-16 text-center">
+            <div className="mb-4 text-5xl">💔</div>
+            <h3 className="mb-2 text-xl font-semibold text-foreground">
               {activeTab === 'all' ? 'No favorites yet' : activeTab === 'watched' ? 'No watched movies' : 'Plan to Watch is empty'}
             </h3>
             {activeTab === 'all' && (
-              <Link to={createPageUrl("Search")}><span className="inline-block px-6 py-3 mt-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-semibold">Discover Movies</span></Link>
+              <Link to={createPageUrl("Search")}>
+                <Button className="mt-4 bg-gradient-to-r from-primary to-accent text-primary-foreground">Discover Movies</Button>
+              </Link>
             )}
           </motion.div>
         )}

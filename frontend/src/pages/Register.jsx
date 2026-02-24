@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
+import { Film } from 'lucide-react';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -31,21 +32,11 @@ const Register = () => {
         try {
             await User.register(formData.firstname, formData.lastname, formData.username, formData.email, formData.password);
             await login(formData.email, formData.password);
-            toast({
-                title: "Registration Successful",
-                description: "Welcome to CoupleMovie!",
-            });
+            toast({ title: "Registration Successful", description: "Welcome to CoupleMovie!" });
             navigate('/');
         } catch (error) {
-            console.error(error);
-            toast({
-                variant: "destructive",
-                title: "Registration Failed",
-                description: error.response?.data?.message || "Could not create account",
-            });
-        } finally {
-            setLoading(false);
-        }
+            toast({ variant: "destructive", title: "Registration Failed", description: error.response?.data?.message || "Could not create account" });
+        } finally { setLoading(false); }
     };
 
     const handleGoogleLogin = () => {
@@ -53,11 +44,15 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
-            <Card className="w-full max-w-md bg-slate-800 border-slate-700 text-slate-100">
-                <CardHeader>
-                    <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
-                    <CardDescription className="text-center text-slate-400">
+        <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+            <div className="pointer-events-none absolute left-1/2 top-1/4 h-80 w-80 -translate-x-1/2 rounded-full bg-accent/10 blur-[100px]" />
+            <Card className="relative w-full max-w-md border-border bg-card text-foreground">
+                <CardHeader className="text-center">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
+                        <Film className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <CardTitle className="text-2xl">Create an Account</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Join CoupleMovie to start your journey
                     </CardDescription>
                 </CardHeader>
@@ -66,83 +61,43 @@ const Register = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="firstname">First Name</Label>
-                                <Input
-                                    id="firstname"
-                                    placeholder="John"
-                                    value={formData.firstname}
-                                    onChange={handleChange}
-                                    required
-                                    className="bg-slate-900 border-slate-700 text-slate-100"
-                                />
+                                <Input id="firstname" placeholder="John" value={formData.firstname}
+                                    onChange={handleChange} required className="border-border bg-background text-foreground" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastname">Last Name</Label>
-                                <Input
-                                    id="lastname"
-                                    placeholder="Doe"
-                                    value={formData.lastname}
-                                    onChange={handleChange}
-                                    required
-                                    className="bg-slate-900 border-slate-700 text-slate-100"
-                                />
+                                <Input id="lastname" placeholder="Doe" value={formData.lastname}
+                                    onChange={handleChange} required className="border-border bg-background text-foreground" />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
-                            <Input
-                                id="username"
-                                placeholder="johndoe"
-                                value={formData.username}
-                                onChange={handleChange}
-                                required
-                                className="bg-slate-900 border-slate-700 text-slate-100"
-                            />
-                            <p className="text-xs text-slate-500">Your unique username for couple invitations</p>
+                            <Input id="username" placeholder="johndoe" value={formData.username}
+                                onChange={handleChange} required className="border-border bg-background text-foreground" />
+                            <p className="text-xs text-muted-foreground">Your unique username for couple invitations</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="m@example.com"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                className="bg-slate-900 border-slate-700 text-slate-100"
-                            />
+                            <Input id="email" type="email" placeholder="m@example.com" value={formData.email}
+                                onChange={handleChange} required className="border-border bg-background text-foreground" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                                className="bg-slate-900 border-slate-700 text-slate-100"
-                            />
+                            <Input id="password" type="password" value={formData.password}
+                                onChange={handleChange} required className="border-border bg-background text-foreground" />
                         </div>
-                        <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90" disabled={loading}>
+                        <Button type="submit" className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90" disabled={loading}>
                             {loading ? "Creating Account..." : "Register"}
                         </Button>
                     </form>
 
                     <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-slate-700" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-slate-800 px-2 text-slate-500">Or continue with</span>
-                        </div>
+                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                        <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or continue with</span></div>
                     </div>
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
-                        onClick={handleGoogleLogin}
-                    >
-                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                    <Button type="button" variant="outline" className="w-full border-border text-foreground hover:bg-secondary" onClick={handleGoogleLogin}>
+                        <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -152,11 +107,9 @@ const Register = () => {
                     </Button>
                 </CardContent>
                 <CardFooter className="flex justify-center">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-purple-400 hover:text-purple-300">
-                            Login
-                        </Link>
+                        <Link to="/login" className="text-primary hover:text-primary/80">Login</Link>
                     </p>
                 </CardFooter>
             </Card>
