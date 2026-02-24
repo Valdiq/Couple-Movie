@@ -5,15 +5,32 @@ export const movieService = {
         const response = await api.get(`/movies/search`, { params: { title } });
         return response.data;
     },
-    list: async (sort, limit) => {
-        // Backend doesn't support list with sort/limit directly in the same way?
-        // It has /search and /advanced-search.
-        // Let's use advanced-search with a wildcard or match all.
-        const response = await api.get(`/movies/search`, { params: { title: 'star' } }); // Placeholder default search
+    searchAll: async (title) => {
+        const response = await api.get(`/movies/search-all`, { params: { title } });
+        return response.data;
+    },
+    advancedSearch: async (query) => {
+        const response = await api.get(`/movies/advanced-search`, { params: { query } });
+        return response.data;
+    },
+    searchByGenres: async (genres) => {
+        const response = await api.get(`/movies/by-genres`, { params: { genres: genres.join(',') } });
+        return response.data;
+    },
+    getByEmotion: async (emotion) => {
+        const response = await api.get(`/movies/by-emotion`, { params: { emotion } });
+        return response.data;
+    },
+    getByEmotions: async (emotions) => {
+        const response = await api.get(`/movies/by-emotions`, { params: { emotions: emotions.join(',') } });
         return response.data;
     },
     getDetails: async (id) => {
         const response = await api.get(`/movies/${id}`);
+        return response.data;
+    },
+    batchRatings: async (ids) => {
+        const response = await api.post('/movies/batch-ratings', { ids });
         return response.data;
     }
 };

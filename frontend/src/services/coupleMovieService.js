@@ -2,25 +2,34 @@ import api from '../api/axios';
 
 export const coupleMovieService = {
     list: async () => {
-        // Backend endpoint for shared movies
-        // Assuming /couples/current/movies or similar
         try {
-            const response = await api.get('/couples/current/movies');
+            const response = await api.get('/couple/movies');
             return response.data;
         } catch (e) {
             return [];
         }
     },
-    add: async (movieId) => {
-        // Add to shared list
-        const response = await api.post('/couples/current/movies', { movie_id: movieId });
+    add: async (movieData) => {
+        const response = await api.post('/couple/movies', movieData);
         return response.data;
     },
-    delete: async (id) => {
-        await api.delete(`/couples/current/movies/${id}`);
+    remove: async (imdbId) => {
+        await api.delete(`/couple/movies/${imdbId}`);
     },
-    update: async (id, data) => {
-        const response = await api.put(`/couples/current/movies/${id}`, data);
+    updateStatus: async (imdbId, data) => {
+        const response = await api.patch(`/couple/movies/${imdbId}`, data);
         return response.data;
+    },
+    rate: async (imdbId, rating) => {
+        const response = await api.post(`/couple/movies/${imdbId}/rate`, { rating });
+        return response.data;
+    },
+    stats: async () => {
+        try {
+            const response = await api.get('/couple/movies/stats');
+            return response.data;
+        } catch (e) {
+            return { matches: 0, watchlist: 0, watched: 0 };
+        }
     }
 };

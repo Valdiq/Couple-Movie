@@ -1,18 +1,30 @@
 import { userFavoriteService } from '../services/userFavoriteService';
 
 export const UserFavorite = {
-    filter: async (criteria) => {
-        // Adapt filter criteria to service call
-        // If filtering by user_email, likely means "my favorites"
+    list: async () => {
         return userFavoriteService.list();
     },
+    filter: async () => {
+        // Legacy compatibility - just list all favorites
+        return userFavoriteService.list();
+    },
+    add: async (movieData) => {
+        return userFavoriteService.add(movieData);
+    },
+    remove: async (imdbId) => {
+        return userFavoriteService.remove(imdbId);
+    },
+    check: async (imdbId) => {
+        return userFavoriteService.check(imdbId);
+    },
+    // Legacy compatibility
     create: async (data) => {
-        return userFavoriteService.add(data.movie_id);
+        return userFavoriteService.add(data);
     },
-    delete: async (id) => {
-        return userFavoriteService.delete(id);
+    delete: async (imdbId) => {
+        return userFavoriteService.remove(imdbId);
     },
-    update: async (id, data) => {
-        return userFavoriteService.update(id, data);
+    updateStatus: async (imdbId, data) => {
+        return userFavoriteService.updateStatus(imdbId, data);
     }
 };

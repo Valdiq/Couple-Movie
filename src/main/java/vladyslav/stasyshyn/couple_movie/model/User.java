@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,6 +30,9 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "username", unique = true)
+    private String displayUsername;
+
     private String password;
 
     private String firstName;
@@ -37,6 +43,13 @@ public class User implements UserDetails {
 
     @Column(name = "google_id")
     private String googleId;
+
+    @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
+    private String avatarUrl;
+
+    @CreationTimestamp
+    @Column(name = "created_date", updatable = false)
+    private LocalDateTime createdDate;
 
     // Couple functionality
     @Column(name = "partner_id")

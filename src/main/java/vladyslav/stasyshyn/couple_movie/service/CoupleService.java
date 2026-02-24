@@ -20,21 +20,24 @@ public class CoupleService {
     private final UserRepository userRepository;
 
     @Transactional
-    public CoupleRequest sendInvite(User sender, String receiverEmail) {
+    public CoupleRequest sendInvite(User sender, String receiverUsername) {
         if (sender.getPartnerId() != null) {
             throw new IllegalStateException("You already have a partner.");
         }
-        if (sender.getEmail().equals(receiverEmail)) {
+        if (sender.getDisplayUsername() != null && sender.getDisplayUsername().equals(receiverUsername)) {
             throw new IllegalArgumentException("You cannot invite yourself.");
         }
 
-        Optional<User> receiver = userRepository.findByEmail(receiverEmail);
-        if (receiver.isPresent() && receiver.get().getPartnerId() != null) {
+        User receiver = userRepository.findByDisplayUsername(receiverUsername)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("User with username '" + receiverUsername + "' not found."));
+
+        if (receiver.getPartnerId() != null) {
             throw new IllegalStateException("This user already has a partner.");
         }
 
         Optional<CoupleRequest> existingRequest = coupleRequestRepository
-                .findBySenderAndReceiverEmailAndStatus(sender, receiverEmail, RequestStatus.PENDING);
+                .findBySenderAndReceiverEmailAndStatus(sender, receiver.getEmail(), RequestStatus.PENDING);
 
         if (existingRequest.isPresent()) {
             return existingRequest.get();
@@ -42,7 +45,7 @@ public class CoupleService {
 
         CoupleRequest request = CoupleRequest.builder()
                 .sender(sender)
-                .receiverEmail(receiverEmail)
+                .receiverEmail(receiver.getEmail())
                 .status(RequestStatus.PENDING)
                 .build();
 
@@ -96,5 +99,36 @@ public class CoupleService {
             return Optional.empty();
         }
         return userRepository.findById(user.getPartnerId());
+    }
+
+    @Transactional
+    public void breakCouple(User user) {
+        if (user.getPartnerId() == null) {
+            throw new IllegalStateException("You don't have a partner to unlink.");
+        }
+
+        User partner = userRepository.findById(user.getPartnerId())
+                .orElseThrow(() -> new IllegalStateException("Partner not found."));
+
+        // Nullify partner IDs on both users
+        user.setPartnerId(null);
+        partner.setPartnerId(null);
+        userRepository.save(user);
+        userRepository.save(partner);
+
+        // Mark related ACCEPTED couple requests as BROKEN
+        List<CoupleRequest> sentRequests = coupleRequestRepository.findBySenderIdAndStatus(
+                user.getId(), RequestStatus.ACCEPTED);
+        for (CoupleRequest req : sentRequests) {
+            req.setStatus(RequestStatus.BROKEN);
+            coupleRequestRepository.save(req);
+        }
+
+        List<CoupleRequest> receivedRequests = coupleRequestRepository.findByReceiverEmailAndStatusIn(
+                user.getEmail(), List.of(RequestStatus.ACCEPTED));
+        for (CoupleRequest req : receivedRequests) {
+            req.setStatus(RequestStatus.BROKEN);
+            coupleRequestRepository.save(req);
+        }
     }
 }

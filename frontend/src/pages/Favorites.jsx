@@ -1,328 +1,238 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trash2, Star, Eye, CheckCircle } from "lucide-react"; // Added Eye, CheckCircle import
-import { Button } from "@/components/ui/button";
+import { Heart, Trash2, Star, Loader2, Eye, Film } from "lucide-react";
 import { UserFavorite } from "@/entities/UserFavorite";
-import { Movie } from "@/entities/Movie";
 import { User } from "@/entities/User";
-// Still needed for MovieDetails, but not for the grid items themselves
 import MovieDetails from "../components/movie/MovieDetails";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ChatWidget from "../components/chat/ChatWidget";
-import StarRating from "../components/movie/StarRating";
-import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // New Import
+import { useAuth } from '@/lib/AuthContext';
+import Pagination from "../components/ui/Pagination";
+import { Button } from "@/components/ui/button";
+
+const ITEMS_PER_PAGE = 15;
+
+function StarRating({ rating, onChange, disabled, size = 'md' }) {
+  const [hover, setHover] = useState(null);
+  const starSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(starNum => {
+        const halfVal = starNum - 0.5;
+        const fullVal = starNum;
+        const currentRating = hover !== null ? hover : (rating || 0);
+        const isHalfFilled = currentRating >= halfVal && currentRating < fullVal;
+        const isFullFilled = currentRating >= fullVal;
+        return (
+          <div key={starNum} className={`relative ${starSize}`} style={{ cursor: disabled ? 'default' : 'pointer' }}>
+            <div className="absolute inset-0 w-1/2 overflow-hidden z-10"
+              onMouseEnter={() => !disabled && setHover(halfVal)}
+              onMouseLeave={() => !disabled && setHover(null)}
+              onClick={(e) => { e.stopPropagation(); !disabled && onChange(halfVal); }}>
+              <Star className={`${starSize} transition-colors ${(isHalfFilled || isFullFilled) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+            </div>
+            <div className="absolute inset-0 z-10" style={{ clipPath: 'inset(0 0 0 50%)' }}
+              onMouseEnter={() => !disabled && setHover(fullVal)}
+              onMouseLeave={() => !disabled && setHover(null)}
+              onClick={(e) => { e.stopPropagation(); !disabled && onChange(fullVal); }}>
+              <Star className={`${starSize} transition-colors ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+            </div>
+            <Star className={`${starSize} ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+          </div>
+        );
+      })}
+      {(rating || 0) > 0 && <span className="text-xs text-yellow-400 ml-1 font-semibold">{rating}</span>}
+    </div>
+  );
+}
 
 export default function Favorites() {
+  const { user: authUser, isLoading: isLoadingAuth } = useAuth();
   const [favorites, setFavorites] = useState([]);
-  const [movies, setMovies] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('all');
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
+  useEffect(() => { loadFavorites(); }, [authUser]);
 
   const loadFavorites = async () => {
     setIsLoading(true);
     try {
       const currentUser = await User.me();
       setUser(currentUser);
-      
-      const userFavorites = await UserFavorite.filter({ user_email: currentUser.email });
-      setFavorites(userFavorites);
-      
-      // Load the actual movie data for each favorite
-      // Filter out any null/undefined from movieResults, as filter might return empty array if no match
-      const moviePromises = userFavorites.map(fav => Movie.filter({ id: fav.movie_id }));
-      const movieResults = await Promise.all(moviePromises);
-      const favoriteMovies = movieResults.flat().filter(movie => movie); // Ensure actual movie objects are loaded
-      
-      setMovies(favoriteMovies);
-    } catch (error) {
-      console.error("Error loading favorites:", error);
-    }
+      if (currentUser) {
+        const favs = await UserFavorite.list();
+        setFavorites(Array.isArray(favs) ? favs : []);
+      }
+    } catch (error) { }
     setIsLoading(false);
   };
 
-  const removeFavorite = async (movieId) => {
-    try {
-      const favoriteToRemove = favorites.find(fav => fav.movie_id === movieId);
-      if (favoriteToRemove) {
-        await UserFavorite.delete(favoriteToRemove.id);
-        setFavorites(prev => prev.filter(fav => fav.movie_id !== movieId));
-        setMovies(prev => prev.filter(movie => movie.id !== movieId));
-      }
-    } catch (error) {
-      console.error("Error removing favorite:", error);
-    }
+  const removeFavorite = async (imdbId) => {
+    try { await UserFavorite.remove(imdbId); setFavorites(prev => prev.filter(fav => fav.imdb_id !== imdbId)); }
+    catch (error) { }
   };
 
-  const updateFavoriteRating = async (favoriteId, rating) => {
+  const toggleWatchStatus = async (fav) => {
+    const newStatus = fav.watch_status === 'WATCHED' ? 'PLAN_TO_WATCH' : 'WATCHED';
     try {
-      await UserFavorite.update(favoriteId, { rating });
-      // Reload favorites to get updated data
-      await loadFavorites();
-    } catch (error) {
-      console.error("Error updating favorite rating:", error);
-    }
+      await UserFavorite.updateStatus(fav.imdb_id, { watch_status: newStatus });
+      setFavorites(prev => prev.map(f =>
+        f.imdb_id === fav.imdb_id ? { ...f, watch_status: newStatus, user_rating: newStatus === 'PLAN_TO_WATCH' ? null : f.user_rating } : f
+      ));
+    } catch (error) { }
   };
 
-  const updateFavoriteStatus = async (favoriteId, status) => {
-    if (!status) return; // Do nothing if the value is cleared
+  const handleRating = async (fav, rating) => {
     try {
-      const updateData = { status };
-      if (status === 'watched') {
-        updateData.date_watched = new Date().toISOString();
-      } else {
-        updateData.date_watched = null; // Clear date if status changes from watched
-      }
-      await UserFavorite.update(favoriteId, updateData);
-      await loadFavorites();
-    } catch (error) {
-      console.error("Error updating favorite status:", error);
-    }
+      await UserFavorite.updateStatus(fav.imdb_id, { user_rating: rating, watch_status: 'WATCHED' });
+      setFavorites(prev => prev.map(f =>
+        f.imdb_id === fav.imdb_id ? { ...f, user_rating: rating, watch_status: 'WATCHED' } : f
+      ));
+    } catch (error) { }
   };
 
-  const handleMovieSelect = (movie) => {
-    setSelectedMovie(movie);
+  const handleMovieSelect = (fav) => {
+    setSelectedMovie({ imdbID: fav.imdb_id, id: fav.imdb_id, title: fav.title, poster: fav.poster, year: fav.year, genre: fav.genre });
     setIsDetailsOpen(true);
   };
 
+  if (isLoadingAuth || isLoading) {
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-200 mb-4">Please log in to view your favorites</h2>
-          <Button onClick={() => User.login()} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-            Log In
-          </Button>
+          <Heart className="mx-auto mb-4 h-16 w-16 text-accent" />
+          <h2 className="mb-4 text-2xl font-bold text-foreground">Please log in to view your favorites</h2>
+          <a href="/login" className="inline-block rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 font-semibold text-primary-foreground">Log In</a>
         </div>
       </div>
     );
   }
 
+  const filteredFavorites = activeTab === 'all' ? favorites
+    : activeTab === 'watched' ? favorites.filter(f => f.watch_status === 'WATCHED')
+      : favorites.filter(f => f.watch_status !== 'WATCHED');
+
+  const watchedCount = favorites.filter(f => f.watch_status === 'WATCHED').length;
+  const planCount = favorites.filter(f => f.watch_status !== 'WATCHED').length;
+  const totalPages = Math.ceil(filteredFavorites.length / ITEMS_PER_PAGE);
+  const paginatedFavorites = filteredFavorites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   return (
-    <div className="min-h-screen py-8 pb-20 md:pb-8 bg-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-block bg-slate-800/50 p-3 rounded-full mb-4 border border-slate-700 shadow-sm">
-            <Heart className="w-8 h-8 text-rose-500 fill-current" />
+    <div className="min-h-screen bg-background pb-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
+          <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
+            <Heart className="h-7 w-7 text-accent" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-100">
-            Your Favorites
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+            My <span className="gradient-text">Favorites</span>
           </h1>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto mt-4">
-            Your personal collection of movies and shows. Rate and track your progress.
-          </p>
         </motion.div>
 
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/80">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
-              <div>
-                <h3 className="text-3xl font-bold text-slate-100">{favorites.length}</h3>
-                <p className="text-slate-400">Total Favorites</p>
-              </div>
-              <div>
-                <h3 className="text-3xl font-bold text-slate-100">
-                  {favorites.filter(fav => fav.status === 'watched').length}
-                </h3>
-                <p className="text-slate-400">Watched</p>
-              </div>
-              <div>
-                <h3 className="text-3xl font-bold text-slate-100">
-                  {favorites.filter(fav => fav.status === 'want_to_watch').length}
-                </h3>
-                <p className="text-slate-400">Want to Watch</p>
-              </div>
-              <div>
-                <h3 className="text-3xl font-bold text-slate-100">
-                  {favorites.filter(fav => fav.rating > 0).length > 0 
-                    ? (favorites.reduce((sum, fav) => sum + (fav.rating || 0), 0) / favorites.filter(fav => fav.rating > 0).length).toFixed(1)
-                    : '—'
-                  }
-                </h3>
-                <p className="text-slate-400">Avg Rating</p>
-              </div>
+        {/* Stats + Tabs */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="mb-4 flex items-center justify-center gap-6">
+              <div className="text-center"><h3 className="text-2xl font-bold text-foreground">{favorites.length}</h3><p className="text-xs text-muted-foreground">Total</p></div>
+              <div className="h-8 w-px bg-border" />
+              <div className="text-center"><h3 className="text-2xl font-bold text-green-400">{watchedCount}</h3><p className="text-xs text-muted-foreground">Watched</p></div>
+              <div className="h-8 w-px bg-border" />
+              <div className="text-center"><h3 className="text-2xl font-bold text-primary">{planCount}</h3><p className="text-xs text-muted-foreground">Plan to Watch</p></div>
+            </div>
+            <div className="flex justify-center gap-2">
+              {[
+                { key: 'all', label: 'All', count: favorites.length },
+                { key: 'plan', label: 'Plan to Watch', count: planCount },
+                { key: 'watched', label: 'Watched', count: watchedCount }
+              ].map(tab => (
+                <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab.key
+                      ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg'
+                      : 'border border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
             </div>
           </div>
         </motion.div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {Array(8).fill(0).map((_, i) => (
-              <div key={i} className="bg-slate-800 rounded-2xl aspect-[2/3] animate-pulse" />
-            ))}
-          </div>
-        )}
-
-        {/* Favorites Grid */}
-        {!isLoading && movies.length > 0 && (
+        {/* Cards Grid */}
+        {filteredFavorites.length > 0 && (
           <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-            >
-              {movies.map((movie, index) => {
-                const favorite = favorites.find(fav => fav.movie_id === movie.id);
-                
-                return (
-                  <motion.div
-                    key={movie.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="relative group"
-                  >
-                    <div className="bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700 hover:border-slate-600 transition-all flex flex-col h-full">
-                      {/* Movie Card */}
-                      <div 
-                        onClick={() => handleMovieSelect(movie)}
-                        className="cursor-pointer"
-                      >
-                        <div className="relative aspect-[2/3] bg-slate-800 overflow-hidden">
-                          {movie.poster && movie.poster !== 'N/A' ? (
-                            <img
-                              src={movie.poster}
-                              alt={movie.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-700">
-                              <Star className="w-16 h-16 text-slate-500" />
-                            </div>
-                          )}
-                          
-                          {/* Status Badge */}
-                          <div className="absolute top-3 left-3">
-                            <Badge className={`text-xs pointer-events-none ${
-                              favorite?.status === 'watched' 
-                                ? 'bg-green-900/80 text-green-300 border-green-700/50' 
-                                : 'bg-blue-900/80 text-blue-300 border-blue-700/50'
-                            }`}>
-                              {favorite?.status === 'watched' ? 'Watched' : 'Want to Watch'}
-                            </Badge>
-                          </div>
-
-                          {/* Remove Button */}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute top-3 right-3 w-8 h-8 bg-black/60 backdrop-blur-sm hover:bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeFavorite(movie.id);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-
-                        <div className="p-4">
-                          <h3 className="text-slate-200 font-bold text-sm mb-2 line-clamp-2 h-10">
-                            {movie.title}
-                          </h3>
-                          
-                          {movie.year && (
-                            <p className="text-slate-400 text-xs">{movie.year}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Interactive Controls */}
-                      <div className="px-4 pb-4 mt-auto space-y-4 border-t border-slate-700/50 pt-4">
-                        {/* Rating */}
-                        <div>
-                          <label className="text-slate-400 text-xs font-medium mb-1.5 block">Your Rating</label>
-                          <StarRating
-                            rating={favorite?.rating || 0}
-                            onRatingChange={(rating) => updateFavoriteRating(favorite.id, rating)}
-                            size="sm"
-                          />
-                        </div>
-
-                        {/* Status Toggle */}
-                        <div>
-                          <label className="text-slate-400 text-xs font-medium mb-1.5 block">Status</label>
-                          <ToggleGroup
-                            type="single"
-                            value={favorite?.status}
-                            onValueChange={(value) => updateFavoriteStatus(favorite.id, value)}
-                            className="w-full"
-                            aria-label="Movie status"
-                          >
-                            <ToggleGroupItem value="want_to_watch" aria-label="Want to watch" className="flex-1 data-[state=on]:bg-blue-900/50 data-[state=on]:text-blue-300">
-                              <Eye className="w-4 h-4 mr-2" />
-                              Want to
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="watched" aria-label="Watched" className="flex-1 data-[state=on]:bg-green-900/50 data-[state=on]:text-green-300">
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Watched
-                            </ToggleGroupItem>
-                          </ToggleGroup>
-                        </div>
-
-                        {favorite?.status === 'watched' && favorite?.date_watched && (
-                          <p className="text-slate-500 text-xs pt-2 text-center">
-                            Watched on {new Date(favorite.date_watched).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {paginatedFavorites.map((fav, index) => (
+                <motion.div key={fav.id || fav.imdb_id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
+                  <div className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30" onClick={() => handleMovieSelect(fav)}>
+                    <div className="relative aspect-[2/3] overflow-hidden">
+                      {fav.poster && fav.poster !== 'N/A' && fav.poster !== '' ? (
+                        <img src={fav.poster} alt={fav.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-16 w-16 text-muted-foreground" /></div>
+                      )}
+                      <button className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); removeFavorite(fav.imdb_id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  </motion.div>
-                );
-              })}
+
+                    <div className="space-y-2 p-3">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{fav.title || 'Untitled'}</h3>
+                      {fav.year && <p className="text-xs text-muted-foreground">{fav.year}</p>}
+
+                      <button
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${fav.watch_status === 'WATCHED'
+                            ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                            : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
+                          }`}
+                        onClick={(e) => { e.stopPropagation(); toggleWatchStatus(fav); }}
+                        title={fav.watch_status === 'WATCHED' ? 'Click to move back to Plan to Watch' : 'Click to mark as Watched'}
+                      >
+                        {fav.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
+                      </button>
+
+                      {fav.watch_status === 'WATCHED' && (
+                        <div onClick={(e) => e.stopPropagation()} className="pt-1">
+                          <p className="mb-1 text-[10px] text-muted-foreground">Your Rating:</p>
+                          <StarRating rating={fav.user_rating} onChange={(r) => handleRating(fav, r)} disabled={false} size="sm" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
           </AnimatePresence>
         )}
 
-        {/* Empty State */}
-        {!isLoading && movies.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16"
-          >
-            <div className="text-6xl mb-4">💔</div>
-            <h3 className="text-xl font-semibold text-slate-200 mb-2">No favorites yet</h3>
-            <p className="text-slate-400 mb-6">
-              Start exploring and add movies to your favorites by clicking the heart icon.
-            </p>
-            <Link to={createPageUrl("Home")}>
-                <Button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                Discover Movies
-                </Button>
-            </Link>
+        {filteredFavorites.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
+
+        {filteredFavorites.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-16 text-center">
+            <div className="mb-4 text-5xl">💔</div>
+            <h3 className="mb-2 text-xl font-semibold text-foreground">
+              {activeTab === 'all' ? 'No favorites yet' : activeTab === 'watched' ? 'No watched movies' : 'Plan to Watch is empty'}
+            </h3>
+            {activeTab === 'all' && (
+              <Link to={createPageUrl("Search")}>
+                <Button className="mt-4 bg-gradient-to-r from-primary to-accent text-primary-foreground">Discover Movies</Button>
+              </Link>
+            )}
           </motion.div>
         )}
       </div>
-
-      <MovieDetails
-        movie={selectedMovie}
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-      />
-
+      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
       <ChatWidget />
     </div>
   );

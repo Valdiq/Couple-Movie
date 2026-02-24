@@ -1,287 +1,326 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { User as UserIcon, Crown, LogOut, Settings, Star, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { User } from "@/entities/User";
-import { UserFavorite } from "@/entities/UserFavorite";
-import { Couple } from "@/entities/Couple";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/lib/AuthContext';
+import { User as UserEntity } from '@/entities/User';
+import { UserFavorite } from '@/entities/UserFavorite';
+import { Couple } from '@/entities/Couple';
+import { authService } from '@/services/authService';
+import { Badge } from '@/components/ui/badge';
+import { User, Camera, Heart, Star, LogOut, Check, X, UserPlus, Loader2, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Unlink, Users, Settings, Crown } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({
-    favorites: 0,
-    partnerConnected: false,
-    joinDate: null
-  });
+  const { user: authUser, isLoading: isLoadingAuth } = useAuth();
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [stats, setStats] = useState({ favorites: 0, joinDate: null });
+  const [invites, setInvites] = useState([]);
+  const [partner, setPartner] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [message, setMessage] = useState(null);
+  const fileInputRef = useRef(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [isResettingPw, setIsResettingPw] = useState(false);
+  const [showBreakConfirm, setShowBreakConfirm] = useState(false);
+  const [isBreaking, setIsBreaking] = useState(false);
 
-  useEffect(() => {
-    loadUserAndStats();
-  }, []);
+  useEffect(() => { loadProfile(); }, [authUser]);
 
-  const loadUserAndStats = async () => {
+  const loadProfile = async () => {
+    setIsLoading(true);
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
-
-      // Load user stats
-      const userFavorites = await UserFavorite.filter({ user_email: currentUser.email });
-      
-      const partnerships = await Couple.filter({
-        $or: [
-          { user1_email: currentUser.email },
-          { user2_email: currentUser.email }
-        ]
-      });
-
-      setStats({
-        favorites: userFavorites.length,
-        partnerConnected: partnerships.length > 0 && partnerships[0].status === 'accepted',
-        joinDate: currentUser.created_date
-      });
-    } catch (error) {
-      console.error("Error loading user:", error);
-      setUser(null);
-    }
+      const userData = await UserEntity.me();
+      if (userData) {
+        setCurrentUser(userData);
+        setStats(prev => ({ ...prev, joinDate: userData.created_date }));
+        try { const favs = await UserFavorite.list(); setStats(prev => ({ ...prev, favorites: Array.isArray(favs) ? favs.length : 0 })); } catch (e) { }
+        try { const inviteData = await Couple.getInvites(); setInvites(inviteData || []); } catch (e) { }
+        try { const partnerData = await Couple.getPartner(); setPartner(partnerData); } catch (e) { }
+      }
+    } catch (error) { }
     setIsLoading(false);
   };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setMessage({ type: 'error', text: 'Image too large. Max 2MB.' }); return; }
+    setAvatarUploading(true); setMessage(null);
     try {
-      await User.logout();
-      // Redirect will happen automatically
-    } catch (error) {
-      console.error("Error logging out:", error);
-      setIsLoggingOut(false);
-    }
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          await UserEntity.updateMyUserData({ avatar_url: event.target.result });
+          setCurrentUser(prev => ({ ...prev, avatar_url: event.target.result }));
+          setMessage({ type: 'success', text: 'Avatar updated!' });
+        } catch (err) { setMessage({ type: 'error', text: 'Failed to save avatar' }); }
+        setAvatarUploading(false);
+      };
+      reader.onerror = () => { setMessage({ type: 'error', text: 'Failed to read file' }); setAvatarUploading(false); };
+      reader.readAsDataURL(file);
+    } catch (error) { setMessage({ type: 'error', text: 'Failed to upload avatar' }); setAvatarUploading(false); }
   };
 
-  const handleUpgrade = async () => {
-    try {
-      await User.updateMyUserData({ subscription_plan: 'pro' });
-      const updatedUser = await User.me();
-      setUser(updatedUser);
-    } catch (error) {
-      console.error("Failed to upgrade:", error);
-    }
+  const handleAcceptInvite = async (requestId) => {
+    try { await Couple.acceptInvite(requestId); setMessage({ type: 'success', text: 'Invitation accepted!' }); setInvites(invites.filter(inv => inv.id !== requestId)); loadProfile(); }
+    catch (error) { setMessage({ type: 'error', text: 'Failed to accept invitation' }); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen py-16 bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading your profile...</div>
-      </div>
-    );
+  const handleRejectInvite = async (requestId) => {
+    try { await Couple.rejectInvite(requestId); setInvites(invites.filter(inv => inv.id !== requestId)); }
+    catch (error) { setMessage({ type: 'error', text: 'Failed to decline invitation' }); }
+  };
+
+  const handleLogout = () => UserEntity.logout();
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault(); setMessage(null);
+    if (newPassword !== confirmPassword) { setMessage({ type: 'error', text: 'Passwords do not match' }); return; }
+    if (newPassword.length < 6) { setMessage({ type: 'error', text: 'Min 6 characters' }); return; }
+    setIsResettingPw(true);
+    try {
+      await authService.resetPassword(currentPassword, newPassword);
+      setMessage({ type: 'success', text: 'Password updated!' }); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setShowPasswordForm(false);
+    } catch (error) { setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to reset password' }); }
+    setIsResettingPw(false);
+  };
+
+  const handleBreakCouple = async () => {
+    setIsBreaking(true);
+    try {
+      await Couple.breakCouple();
+      setMessage({ type: 'success', text: 'Couple link broken.' });
+      setPartner(null); setShowBreakConfirm(false); loadProfile();
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.response?.data || 'Failed to break couple link';
+      setMessage({ type: 'error', text: typeof errMsg === 'string' ? errMsg : 'Failed to break link' });
+    }
+    setIsBreaking(false);
+  };
+
+  if (isLoadingAuth || isLoading) {
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  if (!user) {
+  if (!currentUser) {
     return (
-      <div className="min-h-screen py-16 bg-slate-900">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-800/50 rounded-3xl p-12 border border-slate-700"
-          >
-            <div className="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserIcon className="w-10 h-10 text-slate-400" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-100 mb-4">Join CoupleMovie</h1>
-            <p className="text-lg text-slate-400 mb-8">
-              Sign in to discover your perfect movie matches, create favorites, and share the experience with your partner.
-            </p>
-            <Button 
-              onClick={() => User.login()}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 text-lg"
-            >
-              Sign In / Sign Up
-            </Button>
-          </motion.div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <User className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Not Logged In</h2>
+          <a href="/login" className="inline-block rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 font-semibold text-primary-foreground">Login</a>
         </div>
       </div>
     );
   }
 
+  const fullName = [currentUser.firstname, currentUser.lastname].filter(Boolean).join(' ') || currentUser.full_name || 'User';
+
   return (
-    <div className="min-h-screen py-16 pb-20 md:pb-16 bg-slate-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+    <div className="mx-auto max-w-2xl space-y-6 p-6">
+      {/* Profile Header */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+        <div className="group relative mx-auto mb-4 h-28 w-28 cursor-pointer" onClick={handleAvatarClick}>
+          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-2 border-border bg-secondary">
+            {currentUser.avatar_url
+              ? <img src={currentUser.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
+              : <User className="h-14 w-14 text-muted-foreground" />
+            }
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            {avatarUploading ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : <Camera className="h-6 w-6 text-white" />}
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground">{fullName}</h2>
+        {currentUser.username && <p className="mt-1 text-sm text-muted-foreground">@{currentUser.username}</p>}
+      </motion.div>
+
+      {/* Messages */}
+      <AnimatePresence>
+        {message && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className={`rounded-xl border p-3 text-center text-sm ${message.type === 'success' ? 'border-green-500/30 bg-green-900/20 text-green-400' : 'border-red-500/30 bg-red-900/20 text-red-400'}`}>
+            {message.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Couple Invitations */}
+      {invites.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5 p-5"
         >
-          <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-            <UserIcon className="w-12 h-12 text-slate-300" />
-          </div>
-          <h1 className="text-4xl font-bold text-slate-100 mb-2">{user.full_name}</h1>
-          <p className="text-lg text-slate-400">{user.email}</p>
-        </motion.div>
-
-        {/* Subscription Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h3 className="text-xl font-semibold text-slate-100 mb-2 flex items-center gap-2">
-                  {user.subscription_plan === 'pro' ? (
-                    <Crown className="w-5 h-5 text-yellow-500" />
-                  ) : (
-                    <Star className="w-5 h-5 text-slate-400" />
-                  )}
-                  {user.subscription_plan === 'pro' ? 'CoupleMovie Pro' : 'Free Plan'}
-                </h3>
-                <p className="text-slate-400">
-                  {user.subscription_plan === 'pro' 
-                    ? 'You have access to all premium features including Couple Space'
-                    : 'Upgrade to unlock Couple Space and advanced features'
-                  }
-                </p>
-              </div>
-              {user.subscription_plan === 'free' && (
-                <div className="flex gap-3">
-                  <Link to={createPageUrl("Pricing")}>
-                    <Button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                      <Crown className="w-4 h-4 mr-2" />
-                      Upgrade to Pro
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid md:grid-cols-3 gap-6 mb-8"
-        >
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">{stats.favorites}</div>
-            <div className="text-slate-400">Favorite Movies</div>
-          </div>
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">
-              {stats.partnerConnected ? '1' : '0'}
-            </div>
-            <div className="text-slate-400">Partner Connected</div>
-          </div>
-          <div className="bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-700">
-            <div className="text-3xl font-bold text-slate-100 mb-1">
-              {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
-            </div>
-            <div className="text-slate-400">Member Since</div>
-          </div>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-6"
-        >
-          <h2 className="text-2xl font-bold text-slate-100">Quick Actions</h2>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            <Link to={createPageUrl("Favorites")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Star className="w-8 h-8 text-rose-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">My Favorites</h3>
-                    <p className="text-slate-400 text-sm">View your saved movies</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link to={createPageUrl("Couple")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-purple-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">Couple Space</h3>
-                    <p className="text-slate-400 text-sm">
-                      {user.subscription_plan === 'pro' ? 'Manage shared watchlists' : 'Upgrade to unlock'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link to={createPageUrl("Search")}>
-              <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Settings className="w-8 h-8 text-indigo-500" />
-                  <div>
-                    <h3 className="font-semibold text-slate-200">Discover Movies</h3>
-                    <p className="text-slate-400 text-sm">Find your next favorite</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <div 
-              onClick={handleLogout}
-              className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 hover:bg-red-900/20 hover:border-red-700/50 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <LogOut className="w-8 h-8 text-red-400" />
+          <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+            <UserPlus className="h-5 w-5 text-primary" />Couple Invitations ({invites.length})
+          </h3>
+          <div className="space-y-3">
+            {invites.map(invite => (
+              <div key={invite.id} className="flex items-center justify-between rounded-xl bg-card/60 p-4">
                 <div>
-                  <h3 className="font-semibold text-slate-200">Sign Out</h3>
-                  <p className="text-slate-400 text-sm">
-                    {isLoggingOut ? 'Signing out...' : 'Logout from your account'}
-                  </p>
+                  <p className="font-medium text-foreground">{invite.sender?.firstName} {invite.sender?.lastName}</p>
+                  <p className="text-sm text-muted-foreground">wants to create a couple space</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleAcceptInvite(invite.id)} className="rounded-lg bg-green-600/20 p-2 text-green-400 transition-colors hover:bg-green-600/40"><Check className="h-5 w-5" /></button>
+                  <button onClick={() => handleRejectInvite(invite.id)} className="rounded-lg bg-red-600/20 p-2 text-red-400 transition-colors hover:bg-red-600/40"><X className="h-5 w-5" /></button>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         </motion.div>
+      )}
 
-        {/* Account Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-12 pt-8 border-t border-slate-800"
-        >
-          <h3 className="text-lg font-semibold text-slate-200 mb-4">Account Information</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Email:</span>
-              <span className="text-slate-300">{user.email}</span>
+      {/* Couple Info */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+        className="rounded-2xl border border-border bg-card p-5"
+      >
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+          <Heart className="h-5 w-5 text-accent" /> Couple Space
+        </h3>
+        {partner ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent font-bold text-primary-foreground">
+                  {(currentUser.firstname || fullName || 'U')[0].toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-foreground">{currentUser.firstname || fullName}</span>
+              </div>
+              <Heart className="h-4 w-4 fill-accent text-accent" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-destructive font-bold text-primary-foreground">
+                  {(partner.firstName || partner.username || 'P')[0].toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-foreground">{partner.firstName} {partner.lastName}</span>
+              </div>
+              <Badge variant="outline" className="ml-auto border-green-600/30 bg-green-900/30 text-[10px] text-green-400">Connected</Badge>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Plan:</span>
-              <Badge className={user.subscription_plan === 'pro' 
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
-                : 'bg-slate-700 text-slate-300'
-              }>
-                {user.subscription_plan === 'pro' ? 'Pro' : 'Free'}
-              </Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Member since:</span>
-              <span className="text-slate-300">
-                {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString() : 'Unknown'}
-              </span>
-            </div>
+            <button onClick={() => setShowBreakConfirm(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-sm text-muted-foreground transition-all hover:border-red-500/40 hover:text-red-400">
+              <Unlink className="h-4 w-4" /> Break Couple Link
+            </button>
           </div>
+        ) : (
+          <div className="py-4 text-center">
+            <Users className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
+            <p className="mb-3 text-sm text-muted-foreground">You're not connected with a partner yet.</p>
+            <Link to={createPageUrl("Couple")}
+              className="inline-block rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+              Go to Couple Page
+            </Link>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="rounded-2xl border border-border bg-card p-5 text-center">
+          <div className="mb-1 text-3xl font-bold text-foreground">{stats.favorites}</div>
+          <div className="text-sm text-muted-foreground">Favorite Movies</div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="rounded-2xl border border-border bg-card p-5 text-center">
+          <div className="mb-1 text-3xl font-bold text-foreground">
+            {stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
+          </div>
+          <div className="text-sm text-muted-foreground">Member Since</div>
         </motion.div>
       </div>
+
+      {/* Menu items */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="space-y-2"
+      >
+        <Link to={createPageUrl("Favorites")}
+          className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30">
+          <Heart className="h-4 w-4 text-accent" /> My Favorites
+        </Link>
+        <Link to={createPageUrl("Pricing")}
+          className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30">
+          <Crown className="h-4 w-4 text-primary" /> Upgrade Plan
+        </Link>
+      </motion.div>
+
+      {/* Change Password */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        {!showPasswordForm ? (
+          <button onClick={() => setShowPasswordForm(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30">
+            <Lock className="h-4 w-4 text-primary" />Change Password<ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-base font-semibold text-foreground"><Lock className="h-5 w-5 text-primary" />Change Password</h3>
+              <button onClick={() => setShowPasswordForm(false)} className="text-muted-foreground hover:text-foreground"><ChevronUp className="h-5 w-5" /></button>
+            </div>
+            <form onSubmit={handleResetPassword} className="space-y-3">
+              <div className="relative">
+                <input type={showCurrentPw ? 'text' : 'password'} placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 pr-10 text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none" />
+                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showCurrentPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input type={showNewPw ? 'text' : 'password'} placeholder="New password (min 6)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 pr-10 text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none" />
+                <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none" />
+              <button type="submit" disabled={isResettingPw || !currentPassword || !newPassword || !confirmPassword}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">
+                {isResettingPw ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}{isResettingPw ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Logout */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="pt-2 text-center">
+        <button onClick={handleLogout}
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm text-muted-foreground transition-colors hover:border-red-500/30 hover:text-red-400">
+          <LogOut className="h-4 w-4" />Logout
+        </button>
+      </motion.div>
+
+      {/* Break Couple Confirmation */}
+      <AnimatePresence>
+        {showBreakConfirm && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setShowBreakConfirm(false)}>
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md rounded-2xl border border-border bg-card p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-6 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-red-500/30 bg-red-900/30"><Unlink className="h-8 w-8 text-red-400" /></div>
+                <h3 className="mb-2 text-xl font-bold text-foreground">Break Couple Link?</h3>
+                <p className="text-sm text-muted-foreground">This will disconnect you and your partner. You'll lose the shared space but can create a new one later.</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowBreakConfirm(false)} className="flex-1 rounded-xl border border-border bg-secondary px-4 py-3 text-foreground hover:bg-secondary/80">Cancel</button>
+                <button onClick={handleBreakCouple} disabled={isBreaking}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                  {isBreaking ? <Loader2 className="h-5 w-5 animate-spin" /> : <Unlink className="h-4 w-4" />}{isBreaking ? 'Breaking...' : 'Break Link'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,50 +1,53 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, Heart, Clock, Calendar, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Star, Heart, Users, Check, Plus, Film } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
-import { User as UserEntity } from "@/entities/User";
+import { cn } from "@/lib/utils";
 
-export default function MovieCard({ movie, onSelect }) {
+export default function MovieCard({
+  movie,
+  onSelect,
+  variant = "default",
+  coupleStatus,
+  showCoupleAdd = false,
+  onAddToCouple,
+}) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const [imgError, setImgError] = useState(false);
+
+  const movieTitle = movie?.Title || movie?.title || "";
+  const moviePoster = movie?.Poster || movie?.poster || "";
+  const movieYear = movie?.Year || movie?.year || "";
+  const movieGenre = movie?.Genre || movie?.genre || "";
+  const movieImdbId = movie?.imdbID || movie?.imdb_id || movie?.id || "";
+  const movieRating = movie?.imdbRating || movie?.imdb_rating || "";
+  const movieRuntime = movie?.Runtime || movie?.runtime || "";
+
+  const isMatch = coupleStatus?.user_you_added && coupleStatus?.partner_added;
 
   useEffect(() => {
-    const checkFavoriteStatus = async () => {
-      try {
-        const currentUser = await UserEntity.me();
-        setUser(currentUser);
-        if (currentUser && movie?.id) {
-          const userFavorites = await UserFavorite.filter({ user_email: currentUser.email, movie_id: movie.id });
-          setIsFavorite(userFavorites.length > 0);
-        }
-      } catch (error) {
-        setUser(null);
-      }
-    };
-    checkFavoriteStatus();
-  }, [movie.id]);
+    if (variant === "default" && movieImdbId) {
+      UserFavorite.check(movieImdbId).then(setIsFavorite).catch(() => { });
+    }
+  }, [movieImdbId, variant]);
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
-    if (!user) {
-      await UserEntity.login();
-      return;
-    }
-
     setIsLoading(true);
     try {
       if (isFavorite) {
-        const userFavorites = await UserFavorite.filter({ user_email: user.email, movie_id: movie.id });
-        if (userFavorites.length > 0) {
-          await UserFavorite.delete(userFavorites[0].id);
-        }
+        await UserFavorite.remove(movieImdbId);
         setIsFavorite(false);
       } else {
-        await UserFavorite.create({ user_email: user.email, movie_id: movie.id });
+        await UserFavorite.add({
+          imdb_id: movieImdbId,
+          title: movieTitle,
+          poster: moviePoster,
+          year: movieYear,
+          genre: movieGenre,
+        });
         setIsFavorite(true);
       }
     } catch (error) {
@@ -53,102 +56,159 @@ export default function MovieCard({ movie, onSelect }) {
     setIsLoading(false);
   };
 
+  const handleAddToCouple = (e) => {
+    e.stopPropagation();
+    onAddToCouple?.(movie);
+  };
+
   const formatGenres = (genreString) => {
     if (!genreString) return [];
-    return genreString.split(',').map(g => g.trim()).slice(0, 2);
+    return genreString
+      .split(",")
+      .map((g) => g.trim())
+      .slice(0, 2);
   };
 
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)' }}
-      className="group relative bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700/50 transition-all duration-300 cursor-pointer shadow-md"
-      onClick={() => onSelect(movie)}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.3 }}
+      className={cn(
+        "group relative overflow-hidden rounded-xl border border-border bg-card transition-all cursor-pointer",
+        isMatch && "ring-2 ring-primary/50 glow-purple"
+      )}
+      onClick={() => onSelect?.(movie)}
     >
-      <div className="relative aspect-[2/3] bg-slate-800 overflow-hidden">
-        {movie.poster && movie.poster !== 'N/A' ? (
+      {/* Poster */}
+      <div className="relative aspect-[2/3] w-full overflow-hidden">
+        {!imgError && moviePoster && moviePoster !== "N/A" ? (
           <img
-            src={movie.poster}
-            alt={movie.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
+            src={moviePoster}
+            alt={`${movieTitle} poster`}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={() => setImgError(true)}
           />
-        ) : null}
-        
-        <div className="w-full h-full flex items-center justify-center" style={{ display: movie.poster && movie.poster !== 'N/A' ? 'none' : 'flex' }}>
-          <Play className="w-16 h-16 text-slate-500" />
-        </div>
-        
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent">
-          <div className="absolute top-3 right-3">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="w-8 h-8 bg-black/50 backdrop-blur-sm hover:bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-secondary">
+            <span className="text-4xl font-bold text-muted-foreground">
+              {movieTitle.charAt(0) || <Film className="w-12 h-12" />}
+            </span>
+          </div>
+        )}
+
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+        {/* Action buttons */}
+        <div className="absolute right-2 top-2 flex flex-col gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          {variant === "default" && (
+            <button
               onClick={handleFavorite}
               disabled={isLoading}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full glass transition-all",
+                isFavorite && "bg-primary/80 text-primary-foreground"
+              )}
+              aria-label={
+                isFavorite ? "Remove from favorites" : "Add to favorites"
+              }
             >
-              <Heart className={`w-4 h-4 transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-white/80'}`} />
-            </Button>
-          </div>
-          
-          {movie.imdb_rating && movie.imdb_rating !== 'N/A' && (
-            <div className="absolute top-3 left-3">
-              <Badge className="bg-black/50 backdrop-blur-sm text-slate-100 border-none">
-                <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
-                {movie.imdb_rating}
-              </Badge>
-            </div>
+              <Heart
+                className={cn("h-4 w-4", isFavorite && "fill-current")}
+              />
+            </button>
+          )}
+          {showCoupleAdd && onAddToCouple && (
+            <button
+              onClick={handleAddToCouple}
+              className="flex h-8 w-8 items-center justify-center rounded-full glass transition-all hover:bg-primary/80 hover:text-primary-foreground"
+              aria-label="Add to couple watchlist"
+            >
+              <Users className="h-4 w-4" />
+            </button>
           )}
         </div>
+
+        {/* Match badge */}
+        {isMatch && (
+          <div className="absolute left-2 top-2">
+            <Badge className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 gap-1 text-[10px]">
+              <Heart className="h-3 w-3 fill-current" />
+              Match
+            </Badge>
+          </div>
+        )}
+
+        {/* Rating */}
+        {movieRating && movieRating !== "N/A" && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            {movieRating}
+          </div>
+        )}
       </div>
 
-      <div className="p-4">
-        <h3 className="text-slate-200 font-bold text-base mb-2 line-clamp-1">
-          {movie.title}
+      {/* Info */}
+      <div className="flex flex-col gap-1.5 p-3">
+        <h3 className="line-clamp-1 text-sm font-semibold text-foreground">
+          {movieTitle}
         </h3>
-        
-        <div className="flex items-center gap-4 mb-3 text-xs text-slate-400">
-          {movie.year && movie.year !== 'N/A' && (
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {movie.year}
-            </div>
-          )}
-          {movie.runtime && movie.runtime !== 'N/A' && (
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {movie.runtime}
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-muted-foreground">
+          {movieYear}
+          {movieRuntime && movieRuntime !== "N/A" && ` · ${movieRuntime}`}
+        </p>
 
-        <div className="flex flex-wrap gap-1">
-          {movie.ai_emotions && movie.ai_emotions.slice(0, 2).map(emotion => (
-            <Badge
-              key={emotion}
-              variant="outline"
-              className="text-xs bg-slate-700/50 text-slate-300 border-slate-600 capitalize"
+        {/* Genre tags */}
+        {formatGenres(movieGenre).length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {formatGenres(movieGenre).map((genre) => (
+              <span
+                key={genre}
+                className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
+                {genre}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Couple status indicators */}
+        {variant === "couple" && coupleStatus && (
+          <div className="flex items-center gap-2 pt-1">
+            <div
+              className={cn(
+                "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                coupleStatus.user_you_added
+                  ? "bg-primary/20 text-primary"
+                  : "bg-secondary text-muted-foreground"
+              )}
             >
-              {emotion}
-            </Badge>
-          ))}
-          {formatGenres(movie.genre).slice(0, 1).map(genre => (
-             <Badge
-              key={genre}
-              variant="outline"
-              className="text-xs bg-slate-700/50 text-slate-300 border-slate-600"
+              {coupleStatus.user_you_added ? (
+                <Check className="h-2.5 w-2.5" />
+              ) : (
+                <Plus className="h-2.5 w-2.5" />
+              )}
+              You
+            </div>
+            <div
+              className={cn(
+                "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                coupleStatus.partner_added
+                  ? "bg-accent/20 text-accent"
+                  : "bg-secondary text-muted-foreground"
+              )}
             >
-              {genre}
-            </Badge>
-          ))}
-        </div>
+              {coupleStatus.partner_added ? (
+                <Check className="h-2.5 w-2.5" />
+              ) : (
+                <Plus className="h-2.5 w-2.5" />
+              )}
+              Partner
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

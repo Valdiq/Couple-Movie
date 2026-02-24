@@ -11,8 +11,8 @@ export const User = {
     logout: () => {
         authService.logout();
     },
-    register: async (firstname, lastname, email, password) => {
-        return authService.register(firstname, lastname, email, password);
+    register: async (firstname, lastname, username, email, password) => {
+        return authService.register(firstname, lastname, username, email, password);
     },
     me: async () => {
         return authService.getCurrentUser();

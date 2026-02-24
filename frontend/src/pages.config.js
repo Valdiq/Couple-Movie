@@ -57,6 +57,7 @@ import Welcome from './pages/Welcome';
 import __Layout from './Layout.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import OAuth2Redirect from './pages/OAuth2Redirect';
 
 
 
@@ -70,6 +71,7 @@ export const PAGES = {
     "Welcome": Welcome,
     "Login": Login,
     "Register": Register,
+    "oauth2/redirect": OAuth2Redirect,
 }
 
 export const pagesConfig = {
