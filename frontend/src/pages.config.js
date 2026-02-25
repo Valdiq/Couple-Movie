@@ -58,6 +58,9 @@ import __Layout from './Layout.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import OAuth2Redirect from './pages/OAuth2Redirect';
+import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 
@@ -72,6 +75,9 @@ export const PAGES = {
     "Login": Login,
     "Register": Register,
     "oauth2/redirect": OAuth2Redirect,
+    "verify-email": VerifyEmail,
+    "forgot-password": ForgotPassword,
+    "reset-password": ResetPassword,
 }
 
 export const pagesConfig = {

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 2000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -78,9 +78,9 @@ export const reducer = (state, action) => {
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
             ? {
-                ...t,
-                open: false,
-              }
+              ...t,
+              open: false,
+            }
             : t
         ),
       };
@@ -133,6 +133,8 @@ function toast({ ...props }) {
       },
     },
   });
+
+  setTimeout(() => dismiss(), TOAST_REMOVE_DELAY);
 
   return {
     id,

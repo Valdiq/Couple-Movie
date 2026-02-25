@@ -25,6 +25,13 @@ export const movieService = {
         const response = await api.get(`/movies/by-emotions`, { params: { emotions: emotions.join(',') } });
         return response.data;
     },
+    filter: async (genres, emotions) => {
+        const params = {};
+        if (genres && genres.length > 0) params.genres = genres.join(',');
+        if (emotions && emotions.length > 0) params.emotions = emotions.join(',');
+        const response = await api.get(`/movies/filter`, { params });
+        return response.data;
+    },
     getDetails: async (id) => {
         const response = await api.get(`/movies/${id}`);
         return response.data;

@@ -16,6 +16,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [addingToCouple, setAddingToCouple] = useState(false);
   const [coupleMessage, setCoupleMessage] = useState(null);
+  const [isInCoupleList, setIsInCoupleList] = useState(false);
 
   const displayMovie = fullMovie || movie;
   const movieImdbId = displayMovie?.id || displayMovie?.imdbID || displayMovie?.imdb_id || '';
@@ -37,9 +38,17 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
         if (currentUser && movieImdbId) {
           const fav = await UserFavorite.check(movieImdbId);
           setIsFavorite(!!fav);
+
+          if (currentUser.partner_id) {
+            const coupleCheck = await coupleMovieService.check(movieImdbId);
+            setIsInCoupleList(coupleCheck.in_list);
+          } else {
+            setIsInCoupleList(false);
+          }
         }
       } catch (error) {
         setUser(null);
+        setIsInCoupleList(false);
       }
 
       if (movieImdbId) {
@@ -89,6 +98,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
         year: displayMovie.year || '',
         genre: displayMovie.genre || ''
       });
+      setIsInCoupleList(true);
       setCoupleMessage({ type: 'success', text: 'Added to Couple Watchlist!' });
     } catch (error) {
       setCoupleMessage({ type: 'error', text: 'Failed to add to couple list' });
@@ -133,14 +143,12 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 <div className="absolute inset-0 bg-gradient-to-b from-card/50 via-card to-card" />
               </div>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-4 right-4 w-10 h-10 glass hover:bg-secondary text-muted-foreground hover:text-foreground rounded-full z-10"
+              <button
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center glass hover:bg-secondary text-muted-foreground hover:text-foreground rounded-full z-10"
                 onClick={onClose}
               >
                 <X className="w-5 h-5" />
-              </Button>
+              </button>
 
               <div className="relative flex flex-col lg:flex-row gap-8 p-8">
                 <div className="lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
@@ -221,29 +229,29 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
               )}
 
               <div className="flex gap-4 flex-wrap">
-                <Button
+                <button
                   onClick={handleFavorite}
                   disabled={isLoading}
-                  variant="outline"
-                  className="flex-1 min-w-[200px] border-border hover:bg-secondary text-foreground"
+                  className="flex-1 min-w-[200px] flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium hover:bg-secondary text-foreground"
                 >
                   <Heart className={`w-4 h-4 mr-2 transition-colors ${isFavorite ? 'fill-accent text-accent' : 'text-muted-foreground'}`} />
                   {isFavorite ? 'In Favorites' : 'Add to Favorites'}
-                </Button>
+                </button>
                 {user && (
-                  <Button
+                  <button
                     onClick={handleAddToCouple}
-                    disabled={addingToCouple}
-                    variant="outline"
-                    className="flex-1 min-w-[200px] border-border hover:bg-primary/10 hover:border-primary/50 text-foreground"
+                    disabled={addingToCouple || isInCoupleList}
+                    className="flex-1 min-w-[200px] flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium hover:bg-primary/10 hover:border-primary/50 text-foreground disabled:opacity-50"
                   >
                     {addingToCouple ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : isInCoupleList ? (
+                      <Users className="w-4 h-4 mr-2 text-primary" />
                     ) : (
                       <PlusCircle className="w-4 h-4 mr-2 text-primary" />
                     )}
-                    Add to Couple List
-                  </Button>
+                    {isInCoupleList ? 'In Couple List' : 'Add to Couple List'}
+                  </button>
                 )}
               </div>
 

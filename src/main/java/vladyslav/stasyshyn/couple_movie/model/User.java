@@ -55,6 +55,9 @@ public class User implements UserDetails {
     @Column(name = "partner_id")
     private Long partnerId;
 
+    @Column(name = "is_verified", nullable = false, columnDefinition = "boolean default false")
+    private boolean isVerified;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));

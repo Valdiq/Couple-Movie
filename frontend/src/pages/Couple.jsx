@@ -7,7 +7,10 @@ import { useAuth } from '@/lib/AuthContext';
 import { Heart, Users, Send, UserPlus, Film, X, Check, Loader2, Star, Eye, BookmarkCheck, Trash2, Plus, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import MovieDetails from '../components/movie/MovieDetails';
+import Pagination from '../components/ui/Pagination';
 import { cn } from '@/lib/utils';
+
+const ITEMS_PER_PAGE = 15;
 
 function StarRating({ rating, onChange, disabled, size = 'md', label }) {
   const [hover, setHover] = useState(null);
@@ -59,6 +62,7 @@ export default function CouplePage() {
   const [sharedMovies, setSharedMovies] = useState([]);
   const [stats, setStats] = useState({ matches: 0, watchlist: 0, watched: 0 });
   const [activeTab, setActiveTab] = useState('watchlist');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMovies, setIsLoadingMovies] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -167,8 +171,11 @@ export default function CouplePage() {
 
     return (
       <div className="mx-auto max-w-5xl space-y-6 p-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-          <h1 className="text-4xl font-bold"><span className="gradient-text">Couple Space</span></h1>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
+          <h1 className="mb-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
+            Couple <span className="gradient-text">Space</span>
+          </h1>
+          <p className="text-muted-foreground mt-2">Discover, match, and keep track of movies to watch together.</p>
         </motion.div>
 
         {/* Partner Bar */}
@@ -178,8 +185,12 @@ export default function CouplePage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-lg font-bold text-primary-foreground">
-                  {(user.firstname || user.full_name || 'U')[0].toUpperCase()}
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-accent text-lg font-bold text-primary-foreground">
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt="You" className="h-full w-full object-cover" />
+                  ) : (
+                    (user.firstname || user.full_name || 'U')[0].toUpperCase()
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{user.firstname || user.full_name || 'You'}</p>
@@ -192,8 +203,12 @@ export default function CouplePage() {
                 <span className="h-px w-4 bg-border" />
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent to-destructive text-lg font-bold text-primary-foreground">
-                  {(partner.firstName || partner.username || 'P')[0].toUpperCase()}
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-destructive text-lg font-bold text-primary-foreground">
+                  {partner?.avatar_url ? (
+                    <img src={partner.avatar_url} alt="Partner" className="h-full w-full object-cover" />
+                  ) : (
+                    (partner.firstName || partner.username || 'P')[0].toUpperCase()
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{partner.firstName} {partner.lastName}</p>
@@ -201,10 +216,10 @@ export default function CouplePage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="text-center"><p className="text-xl font-bold text-foreground">{stats.matches}</p><p className="text-xs text-muted-foreground">Matches</p></div>
-              <div className="text-center"><p className="text-xl font-bold text-foreground">{stats.watchlist}</p><p className="text-xs text-muted-foreground">Watchlist</p></div>
-              <div className="text-center"><p className="text-xl font-bold text-foreground">{stats.watched}</p><p className="text-xs text-muted-foreground">Watched</p></div>
+            <div className="flex items-center gap-8">
+              <div className="text-center"><p className="text-3xl font-bold text-pink-500">{stats.matches}</p><p className="text-xs text-muted-foreground mt-1">Matches</p></div>
+              <div className="text-center"><p className="text-3xl font-bold text-primary">{stats.watchlist}</p><p className="text-xs text-muted-foreground mt-1">Watchlist</p></div>
+              <div className="text-center"><p className="text-3xl font-bold text-green-400">{stats.watched}</p><p className="text-xs text-muted-foreground mt-1">Watched</p></div>
             </div>
           </div>
         </motion.div>
@@ -218,13 +233,13 @@ export default function CouplePage() {
             { key: 'watchlist', label: 'Watchlist', icon: BookmarkCheck, count: stats.watchlist },
             { key: 'watched', label: 'Watched', icon: Eye, count: stats.watched }
           ].map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
               className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${activeTab === tab.key
                 ? 'bg-gradient-to-r from-primary/80 to-accent/80 text-primary-foreground shadow-lg'
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
-              <tab.icon className="h-4 w-4" />{tab.label}<span className="text-xs opacity-70">{tab.count}</span>
+              <tab.icon className="h-4 w-4" />{tab.label}<span className="text-xs opacity-70">({tab.count})</span>
             </button>
           ))}
         </motion.div>
@@ -233,65 +248,70 @@ export default function CouplePage() {
         {isLoadingMovies ? (
           <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filteredMovies.length > 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredMovies.map((movie, index) => (
-              <motion.div key={movie.id || movie.imdb_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
-                <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.is_match && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
-                  <div className="relative aspect-[2/3] overflow-hidden">
-                    {movie.poster && movie.poster !== 'N/A' ? (
-                      <img src={movie.poster} alt={movie.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-12 w-12 text-muted-foreground" /></div>
-                    )}
-                    {movie.is_match && (
-                      <div className="absolute left-3 top-3">
-                        <Badge className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 text-[10px] font-semibold shadow-lg gap-1">
-                          <Heart className="h-3 w-3 fill-current" />Match
+          <div className="space-y-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((movie, index) => (
+                <motion.div key={movie.id || movie.imdb_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
+                  <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.is_match && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
+                    <div className="relative aspect-[2/3] overflow-hidden">
+                      {movie.poster && movie.poster !== 'N/A' ? (
+                        <img src={movie.poster} alt={movie.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-12 w-12 text-muted-foreground" /></div>
+                      )}
+                      {movie.is_match && (
+                        <div className="absolute left-3 top-3">
+                          <Badge variant="default" className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 text-[10px] font-semibold shadow-lg gap-1">
+                            <Heart className="h-3 w-3 fill-current" />Match
+                          </Badge>
+                        </div>
+                      )}
+                      <button className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveFromShared(movie.imdb_id); }}>
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="space-y-2 p-3">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{movie.title}</h3>
+                      <p className="text-xs text-muted-foreground">{movie.year}</p>
+
+                      {/* You / Partner badges */}
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.user_you_added ? 'bg-primary/20 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border'}`}>
+                          {movie.user_you_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}You
+                        </Badge>
+                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.partner_added ? 'bg-accent/20 text-accent border-accent/30' : 'bg-secondary text-muted-foreground border-border'}`}>
+                          {movie.partner_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}Partner
                         </Badge>
                       </div>
-                    )}
-                    <button className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
-                      onClick={(e) => { e.stopPropagation(); handleRemoveFromShared(movie.imdb_id); }}>
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="space-y-2 p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{movie.title}</h3>
-                    <p className="text-xs text-muted-foreground">{movie.year}</p>
 
-                    {/* You / Partner badges */}
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant="outline" className={`text-[10px] py-0 ${movie.user_you_added ? 'bg-primary/20 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border'}`}>
-                        {movie.user_you_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}You
-                      </Badge>
-                      <Badge variant="outline" className={`text-[10px] py-0 ${movie.partner_added ? 'bg-accent/20 text-accent border-accent/30' : 'bg-secondary text-muted-foreground border-border'}`}>
-                        {movie.partner_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}Partner
-                      </Badge>
+                      {/* Status button */}
+                      <button
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${movie.watch_status === 'WATCHED'
+                          ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                          : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
+                          }`}
+                        onClick={(e) => { e.stopPropagation(); handleUpdateWatchStatus(movie.imdb_id, movie.watch_status === 'WATCHED' ? 'WATCHLIST' : 'WATCHED'); }}
+                      >
+                        {movie.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
+                      </button>
+
+                      {/* Dual ratings */}
+                      {movie.watch_status === 'WATCHED' && (
+                        <div className="space-y-1.5 border-t border-border pt-1" onClick={(e) => e.stopPropagation()}>
+                          <StarRating rating={movie.your_rating} onChange={(r) => handleCoupleRate(movie.imdb_id, r)} disabled={false} size="sm" label="Your Rating:" />
+                          <StarRating rating={movie.partner_rating} onChange={() => { }} disabled={true} size="sm" label="Partner's Rating:" />
+                        </div>
+                      )}
                     </div>
-
-                    {/* Status button */}
-                    <button
-                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${movie.watch_status === 'WATCHED'
-                        ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                        : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
-                        }`}
-                      onClick={(e) => { e.stopPropagation(); handleUpdateWatchStatus(movie.imdb_id, movie.watch_status === 'WATCHED' ? 'WATCHLIST' : 'WATCHED'); }}
-                    >
-                      {movie.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
-                    </button>
-
-                    {/* Dual ratings */}
-                    {movie.watch_status === 'WATCHED' && (
-                      <div className="space-y-1.5 border-t border-border pt-1" onClick={(e) => e.stopPropagation()}>
-                        <StarRating rating={movie.your_rating} onChange={(r) => handleCoupleRate(movie.imdb_id, r)} disabled={false} size="sm" label="Your Rating:" />
-                        <StarRating rating={movie.partner_rating} disabled={true} size="sm" label="Partner's Rating:" />
-                      </div>
-                    )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+            {filteredMovies.length > ITEMS_PER_PAGE && (
+              <Pagination currentPage={currentPage} totalPages={Math.ceil(filteredMovies.length / ITEMS_PER_PAGE)} onPageChange={setCurrentPage} />
+            )}
+          </div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-16 text-center">
             <Film className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
@@ -300,7 +320,6 @@ export default function CouplePage() {
           </motion.div>
         )}
 
-        {/* Messages */}
         <AnimatePresence>
           {message && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}

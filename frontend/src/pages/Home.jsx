@@ -8,20 +8,21 @@ import { createPageUrl } from "@/utils";
 import MovieCard from "../components/movie/MovieCard";
 import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 const EMOTIONS = [
-  { name: "romantic", label: "Romantic 💕" },
-  { name: "exciting", label: "Exciting ⚡" },
-  { name: "happy", label: "Happy 😊" },
-  { name: "cozy", label: "Cozy ☕" },
-  { name: "thrilling", label: "Thrilling 🎯" },
-  { name: "uplifting", label: "Uplifting ☀️" },
-  { name: "nostalgic", label: "Nostalgic 🧠" },
-  { name: "mysterious", label: "Mysterious 🌙" },
-  { name: "adventurous", label: "Adventurous 🚀" },
-  { name: "emotional", label: "Emotional 💧" },
-  { name: "passionate", label: "Passionate 🔥" },
-  { name: "inspiring", label: "Inspiring ⭐" },
+  { name: "romantic", text: "Romantic", emoji: "💕" },
+  { name: "exciting", text: "Exciting", emoji: "⚡" },
+  { name: "happy", text: "Happy", emoji: "😊" },
+  { name: "cozy", text: "Cozy", emoji: "☕" },
+  { name: "thrilling", text: "Thrilling", emoji: "🎯" },
+  { name: "uplifting", text: "Uplifting", emoji: "☀️" },
+  { name: "nostalgic", text: "Nostalgic", emoji: "🧠" },
+  { name: "mysterious", text: "Mysterious", emoji: "🌙" },
+  { name: "adventurous", text: "Adventurous", emoji: "🚀" },
+  { name: "emotional", text: "Emotional", emoji: "💧" },
+  { name: "passionate", text: "Passionate", emoji: "🔥" },
+  { name: "inspiring", text: "Inspiring", emoji: "⭐" },
 ];
 
 export default function Home() {
@@ -116,7 +117,7 @@ export default function Home() {
                   : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30"
                   }`}
               >
-                {emotion.label}
+                {emotion.text} <AppleEmoji emoji={emotion.emoji} className="ml-1" />
               </button>
             ))}
           </motion.div>
@@ -222,8 +223,8 @@ export default function Home() {
           )}
 
           {!isLoading && movies.length === 0 && (
-            <div className="py-16 text-center">
-              <div className="mb-4 text-5xl">🎬</div>
+            <div className="py-16 text-center shadow-none">
+              <div className="mb-4 text-5xl flex justify-center"><AppleEmoji emoji="🎬" /></div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">No movies found</h3>
               <p className="mb-6 text-muted-foreground">
                 Try searching for movies first to build the cache, or choose a different emotion.

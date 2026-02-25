@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
-import { Film } from 'lucide-react';
+import { Film, AlertCircle } from 'lucide-react';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -21,21 +21,61 @@ const Register = () => {
     const { toast } = useToast();
     const { login } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
+    const validate = () => {
+        const newErrors = {};
+
+        if (!formData.firstname.trim()) {
+            newErrors.firstname = "First name is required";
+        } else if (!/^[A-Za-z]+$/.test(formData.firstname)) {
+            newErrors.firstname = "First name must contain only letters";
+        }
+
+        if (!formData.lastname.trim()) {
+            newErrors.lastname = "Last name is required";
+        } else if (!/^[A-Za-z]+$/.test(formData.lastname)) {
+            newErrors.lastname = "Last name must contain only letters";
+        }
+
+        if (!formData.username.trim()) {
+            newErrors.username = "Username is required";
+        } else if (!/^[A-Za-z][A-Za-z0-9]{3,}$/.test(formData.username)) {
+            newErrors.username = "Username must start with a letter, be at least 4 chars long, and contain no special characters";
+        }
+
+        if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = "Please enter a valid email address";
+        }
+
+        if (!formData.password) {
+            newErrors.password = "Password is required";
+        } else if (formData.password.length < 8) {
+            newErrors.password = "Password must be at least 8 characters long";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validate()) return;
+
         setLoading(true);
         try {
             await User.register(formData.firstname, formData.lastname, formData.username, formData.email, formData.password);
             await login(formData.email, formData.password);
-            toast({ title: "Registration Successful", description: "Welcome to CoupleMovie!" });
+            toast({ variant: "success", title: "Registration Successful", description: "Welcome to CoupleMovie!" });
             navigate('/');
         } catch (error) {
-            toast({ variant: "destructive", title: "Registration Failed", description: error.response?.data?.message || "Could not create account" });
+            toast({ variant: "destructive", title: "Registration Failed", description: error.response?.data?.error || error.response?.data?.message || "Could not create account" });
         } finally { setLoading(false); }
     };
 
@@ -57,34 +97,70 @@ const Register = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} noValidate className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="firstname">First Name</Label>
+                                <Label htmlFor="firstname" className={errors.firstname ? "text-destructive" : ""}>First Name</Label>
                                 <Input id="firstname" placeholder="John" value={formData.firstname}
-                                    onChange={handleChange} required className="border-border bg-background text-foreground" />
+                                    onChange={handleChange}
+                                    className={`bg-background text-foreground transition-colors ${errors.firstname ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
+                                {errors.firstname && (
+                                    <p className="flex items-center text-sm font-medium text-destructive mt-1">
+                                        <AlertCircle className="mr-2 h-4 w-4" />
+                                        {errors.firstname}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="lastname">Last Name</Label>
+                                <Label htmlFor="lastname" className={errors.lastname ? "text-destructive" : ""}>Last Name</Label>
                                 <Input id="lastname" placeholder="Doe" value={formData.lastname}
-                                    onChange={handleChange} required className="border-border bg-background text-foreground" />
+                                    onChange={handleChange}
+                                    className={`bg-background text-foreground transition-colors ${errors.lastname ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
+                                {errors.lastname && (
+                                    <p className="flex items-center text-sm font-medium text-destructive mt-1">
+                                        <AlertCircle className="mr-2 h-4 w-4" />
+                                        {errors.lastname}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="username" className={errors.username ? "text-destructive" : ""}>Username</Label>
                             <Input id="username" placeholder="johndoe" value={formData.username}
-                                onChange={handleChange} required className="border-border bg-background text-foreground" />
-                            <p className="text-xs text-muted-foreground">Your unique username for couple invitations</p>
+                                onChange={handleChange}
+                                className={`bg-background text-foreground transition-colors ${errors.username ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
+                            {errors.username ? (
+                                <p className="flex items-center text-sm font-medium text-destructive mt-1">
+                                    <AlertCircle className="mr-2 h-4 w-4" />
+                                    {errors.username}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">Your unique username for couple invitations</p>
+                            )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email" className={errors.email ? "text-destructive" : ""}>Email</Label>
                             <Input id="email" type="email" placeholder="m@example.com" value={formData.email}
-                                onChange={handleChange} required className="border-border bg-background text-foreground" />
+                                onChange={handleChange}
+                                className={`bg-background text-foreground transition-colors ${errors.email ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
+                            {errors.email && (
+                                <p className="flex items-center text-sm font-medium text-destructive mt-1">
+                                    <AlertCircle className="mr-2 h-4 w-4" />
+                                    {errors.email}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password" className={errors.password ? "text-destructive" : ""}>Password</Label>
                             <Input id="password" type="password" value={formData.password}
-                                onChange={handleChange} required className="border-border bg-background text-foreground" />
+                                onChange={handleChange}
+                                className={`bg-background text-foreground transition-colors ${errors.password ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
+                            {errors.password && (
+                                <p className="flex items-center text-sm font-medium text-destructive mt-1">
+                                    <AlertCircle className="mr-2 h-4 w-4" />
+                                    {errors.password}
+                                </p>
+                            )}
                         </div>
                         <Button type="submit" className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90" disabled={loading}>
                             {loading ? "Creating Account..." : "Register"}

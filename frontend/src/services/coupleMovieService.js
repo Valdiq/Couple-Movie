@@ -31,5 +31,13 @@ export const coupleMovieService = {
         } catch (e) {
             return { matches: 0, watchlist: 0, watched: 0 };
         }
+    },
+    check: async (imdbId) => {
+        try {
+            const response = await api.get(`/couple/movies/check/${imdbId}`);
+            return response.data;
+        } catch (e) {
+            return { in_list: false };
+        }
     }
 };

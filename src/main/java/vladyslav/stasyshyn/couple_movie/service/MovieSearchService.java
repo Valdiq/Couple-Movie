@@ -103,4 +103,67 @@ public class MovieSearchService {
         return movieSearchRepository.findByImdbRatingGreaterThanAndYearLessThanEqual(
                 9.0, String.valueOf(cutoffYear));
     }
+
+    /**
+     * Filter movies combining multiple criteria.
+     * 
+     * @param explicitGenres Genres selected explicitly (OR logic among them).
+     * @param emotionGenres  Intersected genres from selected emotions (OR logic
+     *                       among them).
+     * @param isNostalgic    Whether nostalgic criteria is required.
+     */
+    public List<MovieDocument> filterMovies(List<String> explicitGenres, List<String> emotionGenres,
+            boolean isNostalgic) {
+        // We will fetch lists and then intersect them in memory for simplicity,
+        // as the data set is small and complex AND/OR queries are hard to express with
+        // method names.
+
+        List<MovieDocument> explicitGenreResults = null;
+        if (explicitGenres != null && !explicitGenres.isEmpty()) {
+            explicitGenreResults = searchByGenres(explicitGenres);
+        }
+
+        List<MovieDocument> emotionGenreResults = null;
+        if (emotionGenres != null && !emotionGenres.isEmpty()) {
+            emotionGenreResults = searchByGenres(emotionGenres);
+        }
+
+        List<MovieDocument> nostalgicResults = null;
+        if (isNostalgic) {
+            nostalgicResults = searchNostalgic();
+        }
+
+        // Now we intersect the non-null result sets
+        List<MovieDocument> result = null;
+
+        if (explicitGenreResults != null) {
+            result = new ArrayList<>(explicitGenreResults);
+        }
+
+        if (emotionGenreResults != null) {
+            if (result == null) {
+                result = new ArrayList<>(emotionGenreResults);
+            } else {
+                // Intersect based on imdbID
+                Set<String> emotionIds = emotionGenreResults.stream()
+                        .map(MovieDocument::getImdbID)
+                        .collect(java.util.stream.Collectors.toSet());
+                result.removeIf(m -> !emotionIds.contains(m.getImdbID()));
+            }
+        }
+
+        if (nostalgicResults != null) {
+            if (result == null) {
+                result = new ArrayList<>(nostalgicResults);
+            } else {
+                // Intersect based on imdbID
+                Set<String> nostalgicIds = nostalgicResults.stream()
+                        .map(MovieDocument::getImdbID)
+                        .collect(java.util.stream.Collectors.toSet());
+                result.removeIf(m -> !nostalgicIds.contains(m.getImdbID()));
+            }
+        }
+
+        return result != null ? result : new ArrayList<>();
+    }
 }

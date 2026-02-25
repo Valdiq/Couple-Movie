@@ -135,6 +135,28 @@ export const Movie = {
             return [];
         }
     },
+    filter: async (genres, emotions) => {
+        try {
+            const results = await movieService.filter(genres, emotions);
+            if (Array.isArray(results)) {
+                return results.map(m => ({
+                    id: m.imdbID,
+                    title: m.title,
+                    poster: m.poster,
+                    year: m.year,
+                    type: m.type,
+                    genre: m.genre,
+                    director: m.director,
+                    plot: m.plot,
+                    imdb_rating: m.imdbRating,
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to filter movies", e);
+            return [];
+        }
+    },
     get: async (id) => {
         return movieService.getDetails(id);
     }

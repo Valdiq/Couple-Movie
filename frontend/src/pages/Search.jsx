@@ -9,6 +9,7 @@ import MovieCard from "../components/movie/MovieCard";
 import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
 import Pagination from "../components/ui/Pagination";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -36,33 +37,26 @@ export default function Search() {
   const [ratings, setRatings] = useState({});
   const [showFilters, setShowFilters] = useState(false);
 
+  const [hasSearched, setHasSearched] = useState(false);
+
   useEffect(() => {
-    if (selectedGenres.length > 0) {
-      fetchByGenres(selectedGenres);
-    } else if (selectedEmotions.length > 0) {
-      fetchByEmotions(selectedEmotions);
+    if (selectedGenres.length > 0 || selectedEmotions.length > 0) {
+      setHasSearched(true);
+      fetchFilters(selectedGenres, selectedEmotions);
     } else if (searchQuery === "") {
       setFilteredMovies(movies);
     }
     setCurrentPage(1);
   }, [selectedGenres, selectedEmotions]);
 
-  const fetchByGenres = async (genres) => {
-    setIsLoading(true);
-    try { const results = await Movie.searchByGenres(genres); setFilteredMovies(results); }
-    catch (error) { }
-    setIsLoading(false);
-  };
-
-  const fetchByEmotions = async (emotions) => {
+  const fetchFilters = async (genres, emotions) => {
     setIsLoading(true);
     try {
-      if (emotions.length === 1) {
-        const results = await Movie.getByEmotion(emotions[0]); setFilteredMovies(results);
-      } else {
-        const results = await Movie.getByEmotions(emotions); setFilteredMovies(results);
-      }
-    } catch (error) { }
+      const results = await Movie.filter(genres, emotions);
+      setFilteredMovies(results);
+    } catch (error) {
+      console.error(error);
+    }
     setIsLoading(false);
   };
 
@@ -70,6 +64,7 @@ export default function Search() {
     e.preventDefault();
     if (!searchQuery.trim()) { setMovies([]); setFilteredMovies([]); return; }
     setIsSearching(true);
+    setHasSearched(true);
     setCurrentPage(1);
     try {
       const results = await Movie.search(searchQuery.trim());
@@ -90,14 +85,12 @@ export default function Search() {
     const newGenres = selectedGenres.includes(genre)
       ? selectedGenres.filter(g => g !== genre) : [...selectedGenres, genre];
     setSelectedGenres(newGenres);
-    if (newGenres.length > 0) setSelectedEmotions([]);
   };
 
   const toggleEmotion = (emotion) => {
     const newEmotions = selectedEmotions.includes(emotion)
       ? selectedEmotions.filter(e => e !== emotion) : [...selectedEmotions, emotion];
     setSelectedEmotions(newEmotions);
-    if (newEmotions.length > 0) setSelectedGenres([]);
   };
 
   const clearFilters = () => {
@@ -239,11 +232,14 @@ export default function Search() {
           )}
 
           {/* Results count */}
-          <p className="text-sm text-muted-foreground">
-            {isSearching || isLoading ? 'Loading...' :
-              `Showing ${filteredMovies.length} ${filteredMovies.length === 1 ? 'result' : 'results'}${totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}`
-            }
-          </p>
+          {!(isLoading || isSearching) && filteredMovies.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredMovies.length} {filteredMovies.length === 1 ? 'result' : 'results'}{totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}
+            </p>
+          )}
+          {(isLoading || isSearching) && (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          )}
 
           {/* Loading */}
           {(isLoading || isSearching) && (
@@ -273,11 +269,11 @@ export default function Search() {
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           )}
 
-          {!(isLoading || isSearching) && filteredMovies.length === 0 && (
+          {!(isLoading || isSearching) && filteredMovies.length === 0 && hasSearched && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-16 text-center">
-              <div className="mb-4 text-5xl">🧐</div>
-              <h3 className="mb-2 text-xl font-semibold text-foreground">No movies found</h3>
-              <p className="text-muted-foreground">Try searching for a movie by title, or use genre/emotion filters to discover from cached films.</p>
+              <div className="mb-4 flex justify-center text-7xl"><AppleEmoji emoji="🍿" /></div>
+              <h3 className="mb-2 text-2xl font-bold text-foreground">Time for a movie night!</h3>
+              <p className="text-muted-foreground">It seems we couldn't find any movies matching that vibe.<br />Try mixing up the genres and emotions, or search for a classic title!</p>
             </motion.div>
           )}
         </div>
