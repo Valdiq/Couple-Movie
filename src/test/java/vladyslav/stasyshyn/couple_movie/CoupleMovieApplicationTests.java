@@ -73,6 +73,7 @@ class CoupleMovieApplicationTests {
                 RegisterRequest registerRequest = new RegisterRequest();
                 registerRequest.setFirstName("Auth");
                 registerRequest.setLastName("Test");
+                registerRequest.setUsername("authtest");
                 registerRequest.setEmail(email);
                 registerRequest.setPassword(password);
 
@@ -109,7 +110,7 @@ class CoupleMovieApplicationTests {
 
         @Test
         void testUserMovieController() throws Exception {
-                String token = createAndAuthenticateUser("user_movie_test@example.com", "password123");
+                String token = createAndAuthenticateUser("user_movie_test@example.com", "password123", "usermovie");
                 String imdbId = "tt1375666"; // Inception
 
                 mockMvc.perform(post("/api/v1/user/movies/" + imdbId + "/status")
@@ -133,12 +134,12 @@ class CoupleMovieApplicationTests {
 
         @Test
         void testCoupleController() throws Exception {
-                String tokenA = createAndAuthenticateUser("userA@example.com", "passwordA");
-                String tokenB = createAndAuthenticateUser("userB@example.com", "passwordB");
+                String tokenA = createAndAuthenticateUser("userA@example.com", "passwordA", "userA");
+                String tokenB = createAndAuthenticateUser("userB@example.com", "passwordB", "userB");
 
                 MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
                                 .header("Authorization", "Bearer " + tokenA)
-                                .param("email", "userB@example.com"))
+                                .param("username", "userB"))
                                 .andExpect(status().isOk())
                                 .andReturn();
 
@@ -164,12 +165,12 @@ class CoupleMovieApplicationTests {
 
         @Test
         void testCoupleRejection() throws Exception {
-                String tokenC = createAndAuthenticateUser("userC@example.com", "passwordC");
-                String tokenD = createAndAuthenticateUser("userD@example.com", "passwordD");
+                String tokenC = createAndAuthenticateUser("userC@example.com", "passwordC", "userC");
+                String tokenD = createAndAuthenticateUser("userD@example.com", "passwordD", "userD");
 
                 MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
                                 .header("Authorization", "Bearer " + tokenC)
-                                .param("email", "userD@example.com"))
+                                .param("username", "userD"))
                                 .andExpect(status().isOk())
                                 .andReturn();
 
@@ -185,10 +186,11 @@ class CoupleMovieApplicationTests {
                                 .andExpect(status().isNotFound());
         }
 
-        private String createAndAuthenticateUser(String email, String password) throws Exception {
+        private String createAndAuthenticateUser(String email, String password, String username) throws Exception {
                 RegisterRequest registerRequest = new RegisterRequest();
                 registerRequest.setFirstName("Test");
                 registerRequest.setLastName("User");
+                registerRequest.setUsername(username);
                 registerRequest.setEmail(email);
                 registerRequest.setPassword(password);
 

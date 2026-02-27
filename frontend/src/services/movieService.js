@@ -39,5 +39,9 @@ export const movieService = {
     batchRatings: async (ids) => {
         const response = await api.post('/movies/batch-ratings', { ids });
         return response.data;
+    },
+    getRandom: async () => {
+        const response = await api.get(`/movies/random`);
+        return response.data;
     }
 };

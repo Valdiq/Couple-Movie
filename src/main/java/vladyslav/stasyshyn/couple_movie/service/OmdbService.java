@@ -9,6 +9,7 @@ import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieSummary;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -27,15 +28,40 @@ public class OmdbService {
         this.movieSearchService = movieSearchService;
     }
 
+    public void fetchAndSaveFullDetailsAsync(List<OmdbMovieSummary> summaries) {
+        if (summaries == null || summaries.isEmpty())
+            return;
+        CompletableFuture.runAsync(() -> {
+            for (OmdbMovieSummary summary : summaries) {
+                try {
+                    // Skip if already in database (as getMovieById checks MySQL)
+                    var cachedMovie = movieSearchService.getMovieById(summary.getImdbID());
+                    if (cachedMovie.isPresent() && cachedMovie.get().getPlot() != null) {
+                        continue;
+                    }
+                    getMovieDetails(summary.getImdbID());
+                } catch (Exception e) {
+                    log.error("Failed async fetch for {}", summary.getImdbID(), e);
+                }
+            }
+        });
+    }
+
     public OmdbSearchResponse searchMovies(String title) {
         log.info("Searching movies with title: {}", title);
-        return restClient.get()
+        OmdbSearchResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .queryParam("apikey", apiKey)
                         .queryParam("s", title)
                         .build())
                 .retrieve()
                 .body(OmdbSearchResponse.class);
+
+        if (response != null && "True".equals(response.getResponse()) && response.getSearch() != null) {
+            fetchAndSaveFullDetailsAsync(response.getSearch());
+        }
+
+        return response;
     }
 
     /**
@@ -73,6 +99,7 @@ public class OmdbService {
             }
 
             allResults.addAll(response.getSearch());
+            fetchAndSaveFullDetailsAsync(response.getSearch());
 
             // Stop if we've fetched all available results
             if (allResults.size() >= totalResults) {

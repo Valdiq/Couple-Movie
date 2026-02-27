@@ -5,10 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import vladyslav.stasyshyn.couple_movie.document.MovieDocument;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieDetails;
+import vladyslav.stasyshyn.couple_movie.model.Movie;
+import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 import vladyslav.stasyshyn.couple_movie.repository.MovieSearchRepository;
 
-import java.time.Year;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +18,7 @@ import java.util.*;
 public class MovieSearchService {
 
     private final MovieSearchRepository movieSearchRepository;
+    private final MovieRepository movieRepository;
 
     public void saveMovie(OmdbMovieDetails omdbMovie) {
         try {
@@ -24,8 +27,9 @@ public class MovieSearchService {
                 rating = Double.parseDouble(omdbMovie.getImdbRating());
             }
 
-            MovieDocument document = MovieDocument.builder()
-                    .imdbID(omdbMovie.getImdbID())
+            // Save to MySQL
+            Movie movie = Movie.builder()
+                    .imdbId(omdbMovie.getImdbID())
                     .title(omdbMovie.getTitle())
                     .year(omdbMovie.getYear())
                     .type(omdbMovie.getType())
@@ -35,106 +39,139 @@ public class MovieSearchService {
                     .plot(omdbMovie.getPlot())
                     .imdbRating(rating)
                     .build();
+            movieRepository.save(movie);
 
+            // Save to Elasticsearch for fuzzy search
+            MovieDocument document = MovieDocument.builder()
+                    .imdbID(omdbMovie.getImdbID())
+                    .title(omdbMovie.getTitle())
+                    .year(omdbMovie.getYear())
+                    .genre(omdbMovie.getGenre())
+                    .build();
             movieSearchRepository.save(document);
-            log.info("Indexed movie: {}", omdbMovie.getTitle());
+            log.info("Indexed and saved movie: {}", omdbMovie.getTitle());
         } catch (Exception e) {
-            log.error("Failed to index movie: {}", omdbMovie.getTitle(), e);
+            log.error("Failed to index and save movie: {}", omdbMovie.getTitle(), e);
         }
     }
 
-    public List<MovieDocument> searchMovies(String query) {
-        return movieSearchRepository.findByTitleContaining(query);
+    public void saveMovieSummaries(List<OmdbMovieSummary> summaries) {
+        if (summaries == null || summaries.isEmpty())
+            return;
+
+        List<String> imdbIds = summaries.stream().map(OmdbMovieSummary::getImdbID).collect(Collectors.toList());
+        List<String> existingIds = movieRepository.findAllById(imdbIds).stream()
+                .map(Movie::getImdbId).collect(Collectors.toList());
+
+        List<Movie> newMovies = new ArrayList<>();
+        List<MovieDocument> newDocs = new ArrayList<>();
+
+        for (OmdbMovieSummary summary : summaries) {
+            if (existingIds.contains(summary.getImdbID())) {
+                continue;
+            }
+
+            Movie movie = Movie.builder()
+                    .imdbId(summary.getImdbID())
+                    .title(summary.getTitle())
+                    .year(summary.getYear())
+                    .type(summary.getType())
+                    .poster(summary.getPoster())
+                    .build();
+            newMovies.add(movie);
+
+            MovieDocument document = MovieDocument.builder()
+                    .imdbID(summary.getImdbID())
+                    .title(summary.getTitle())
+                    .year(summary.getYear())
+                    .build();
+            newDocs.add(document);
+        }
+
+        if (!newMovies.isEmpty()) {
+            movieRepository.saveAll(newMovies);
+            movieSearchRepository.saveAll(newDocs);
+            log.info("Batch indexed and saved {} new movie summaries", newMovies.size());
+        }
     }
 
-    public Optional<MovieDocument> getMovieById(String imdbId) {
-        return movieSearchRepository.findById(imdbId);
+    public List<Movie> searchMovies(String query) {
+        List<MovieDocument> esResults = movieSearchRepository.searchByTitleFuzzy(query);
+        List<String> ids = esResults.stream().map(MovieDocument::getImdbID).collect(Collectors.toList());
+        if (ids.isEmpty())
+            return List.of();
+        return movieRepository.findAllById(ids);
     }
 
-    /**
-     * Search for movies that match any of the provided genres.
-     * Uses a single regex query for efficiency when possible.
-     */
-    public List<MovieDocument> searchByGenres(List<String> genres) {
-        // Try a single regex query: "Action|Comedy|Drama"
+    public Optional<Movie> getMovieById(String imdbId) {
+        return movieRepository.findById(imdbId);
+    }
+
+    public Movie getRandomMovie() {
+        return movieRepository.findRandomMovie().orElse(null);
+    }
+
+    public List<Movie> searchByGenres(List<String> genres) {
+        // Find IDs from ES based on genre
+        Set<String> ids = new HashSet<>();
         try {
-            String regex = genres.stream()
-                    .map(String::trim)
-                    .collect(java.util.stream.Collectors.joining("|"));
+            String regex = genres.stream().map(String::trim).collect(Collectors.joining("|"));
             List<MovieDocument> results = movieSearchRepository.findByGenreMatches(regex);
-            if (!results.isEmpty()) {
-                // Deduplicate by imdbID
-                Set<String> seenIds = new LinkedHashSet<>();
-                List<MovieDocument> deduped = new ArrayList<>();
-                for (MovieDocument movie : results) {
-                    if (seenIds.add(movie.getImdbID())) {
-                        deduped.add(movie);
-                    }
-                }
-                return deduped;
-            }
+            ids.addAll(results.stream().map(MovieDocument::getImdbID).collect(Collectors.toList()));
         } catch (Exception e) {
-            log.warn("Regex genre search failed, falling back to loop: {}", e.getMessage());
-        }
-
-        // Fallback: loop approach
-        Set<String> seenIds = new HashSet<>();
-        List<MovieDocument> results = new ArrayList<>();
-
-        for (String genre : genres) {
-            List<MovieDocument> movies = movieSearchRepository.findByGenreContaining(genre.trim());
-            for (MovieDocument movie : movies) {
-                if (seenIds.add(movie.getImdbID())) {
-                    results.add(movie);
-                }
+            for (String genre : genres) {
+                ids.addAll(movieSearchRepository.findByGenreContaining(genre.trim())
+                        .stream().map(MovieDocument::getImdbID).collect(Collectors.toList()));
             }
         }
-
-        return results;
+        if (ids.isEmpty())
+            return List.of();
+        return movieRepository.findAllById(ids);
     }
 
-    /**
-     * Search for "nostalgic" movies: rating > 9.0 and at least 10 years old.
-     * Year comparison is year-only (e.g., current year 2026 → return films with
-     * year ≤ 2016).
-     */
-    public List<MovieDocument> searchNostalgic() {
-        int cutoffYear = Year.now().getValue() - 10;
-        return movieSearchRepository.findByImdbRatingGreaterThanAndYearLessThanEqual(
-                9.0, String.valueOf(cutoffYear));
+    public List<Movie> searchNostalgic() {
+        // For nostalgic we search directly in MySQL, because rating and year aren't
+        // parsed in ES anymore (rating removed)
+        // Let's retrieve all movies from MySQL and filter in memory, or we could add a
+        // DB query.
+        // It's easier to add a DB query for nostalgic but since we don't have it yet,
+        // we stream all.
+        // Or actually, let's just use MySQL. Wait, rating > 9.0 and year <= cutoff.
+        int cutoffYear = java.time.Year.now().getValue() - 10;
+        List<Movie> allMovies = movieRepository.findAll();
+        return allMovies.stream()
+                .filter(m -> m.getImdbRating() != null && m.getImdbRating() > 9.0)
+                .filter(m -> {
+                    try {
+                        String yrStr = m.getYear();
+                        if (yrStr != null && yrStr.length() >= 4) {
+                            int yr = Integer.parseInt(yrStr.substring(0, 4));
+                            return yr <= cutoffYear;
+                        }
+                    } catch (Exception ignore) {
+                    }
+                    return false;
+                })
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Filter movies combining multiple criteria.
-     * 
-     * @param explicitGenres Genres selected explicitly (OR logic among them).
-     * @param emotionGenres  Intersected genres from selected emotions (OR logic
-     *                       among them).
-     * @param isNostalgic    Whether nostalgic criteria is required.
-     */
-    public List<MovieDocument> filterMovies(List<String> explicitGenres, List<String> emotionGenres,
-            boolean isNostalgic) {
-        // We will fetch lists and then intersect them in memory for simplicity,
-        // as the data set is small and complex AND/OR queries are hard to express with
-        // method names.
-
-        List<MovieDocument> explicitGenreResults = null;
+    public List<Movie> filterMovies(List<String> explicitGenres, List<String> emotionGenres, boolean isNostalgic) {
+        List<Movie> explicitGenreResults = null;
         if (explicitGenres != null && !explicitGenres.isEmpty()) {
             explicitGenreResults = searchByGenres(explicitGenres);
         }
 
-        List<MovieDocument> emotionGenreResults = null;
+        List<Movie> emotionGenreResults = null;
         if (emotionGenres != null && !emotionGenres.isEmpty()) {
             emotionGenreResults = searchByGenres(emotionGenres);
         }
 
-        List<MovieDocument> nostalgicResults = null;
+        List<Movie> nostalgicResults = null;
         if (isNostalgic) {
             nostalgicResults = searchNostalgic();
         }
 
-        // Now we intersect the non-null result sets
-        List<MovieDocument> result = null;
+        List<Movie> result = null;
 
         if (explicitGenreResults != null) {
             result = new ArrayList<>(explicitGenreResults);
@@ -144,11 +181,8 @@ public class MovieSearchService {
             if (result == null) {
                 result = new ArrayList<>(emotionGenreResults);
             } else {
-                // Intersect based on imdbID
-                Set<String> emotionIds = emotionGenreResults.stream()
-                        .map(MovieDocument::getImdbID)
-                        .collect(java.util.stream.Collectors.toSet());
-                result.removeIf(m -> !emotionIds.contains(m.getImdbID()));
+                Set<String> emotionIds = emotionGenreResults.stream().map(Movie::getImdbId).collect(Collectors.toSet());
+                result.removeIf(m -> !emotionIds.contains(m.getImdbId()));
             }
         }
 
@@ -156,11 +190,8 @@ public class MovieSearchService {
             if (result == null) {
                 result = new ArrayList<>(nostalgicResults);
             } else {
-                // Intersect based on imdbID
-                Set<String> nostalgicIds = nostalgicResults.stream()
-                        .map(MovieDocument::getImdbID)
-                        .collect(java.util.stream.Collectors.toSet());
-                result.removeIf(m -> !nostalgicIds.contains(m.getImdbID()));
+                Set<String> nostalgicIds = nostalgicResults.stream().map(Movie::getImdbId).collect(Collectors.toSet());
+                result.removeIf(m -> !nostalgicIds.contains(m.getImdbId()));
             }
         }
 

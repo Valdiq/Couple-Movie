@@ -56,12 +56,14 @@ export default function Home() {
     }
   };
 
-  const getRandomMovie = () => {
-    if (movies.length > 0) {
-      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+  const getRandomMovie = async () => {
+    setIsLoading(true);
+    const randomMovie = await Movie.getRandom();
+    if (randomMovie) {
       setSelectedMovie(randomMovie);
       setIsDetailsOpen(true);
     }
+    setIsLoading(false);
   };
 
   const clearMood = () => {
@@ -147,6 +149,30 @@ export default function Home() {
             >
               Discover
             </Button>
+            <Button
+              onClick={getRandomMovie}
+              disabled={isLoading}
+              className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2 hidden sm:flex"
+            >
+              <Shuffle className="h-4 w-4" />
+              Surprise Me
+            </Button>
+          </motion.div>
+          {/* Mobile Surprise Me button below */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-4 flex sm:hidden justify-center"
+          >
+            <Button
+              onClick={getRandomMovie}
+              disabled={isLoading}
+              className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2"
+            >
+              <Shuffle className="h-4 w-4" />
+              Surprise Me
+            </Button>
           </motion.div>
 
           {/* Action buttons */}
@@ -163,14 +189,6 @@ export default function Home() {
               >
                 <X className="h-4 w-4" />
                 Clear Mood
-              </Button>
-              <Button
-                onClick={getRandomMovie}
-                disabled={movies.length === 0}
-                className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2"
-              >
-                <Shuffle className="h-4 w-4" />
-                Surprise Me
               </Button>
             </motion.div>
           )}

@@ -113,14 +113,14 @@ public class MovieController {
             if (!allGenres.isEmpty()) {
                 var genreResults = movieSearchService.searchByGenres(new ArrayList<>(allGenres));
                 for (var movie : genreResults) {
-                    seenIds.putIfAbsent(movie.getImdbID(), movie);
+                    seenIds.putIfAbsent(movie.getImdbId(), movie);
                 }
             }
 
             if (includeNostalgic) {
                 var nostalgicResults = movieSearchService.searchNostalgic();
                 for (var movie : nostalgicResults) {
-                    seenIds.putIfAbsent(movie.getImdbID(), movie);
+                    seenIds.putIfAbsent(movie.getImdbId(), movie);
                 }
             }
 
@@ -190,9 +190,25 @@ public class MovieController {
     public ResponseEntity<?> getMovieDetails(@PathVariable("imdbId") String imdbId) {
         var cachedMovie = movieSearchService.getMovieById(imdbId);
         if (cachedMovie.isPresent()) {
-            return ResponseEntity.ok(cachedMovie.get());
+            var movie = cachedMovie.get();
+            // A movie saved from batch searching might be missing full details
+            if (movie.getDirector() != null && movie.getPlot() != null && movie.getGenre() != null) {
+                return ResponseEntity.ok(movie);
+            }
         }
         return ResponseEntity.ok(omdbService.getMovieDetails(imdbId));
+    }
+
+    /**
+     * Get a random movie from the database (Surprise Me feature).
+     */
+    @GetMapping("/random")
+    public ResponseEntity<?> getRandomMovie() {
+        var movie = movieSearchService.getRandomMovie();
+        if (movie != null) {
+            return ResponseEntity.ok(movie);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     /**
