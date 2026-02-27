@@ -5,7 +5,7 @@ import { movieService } from '../services/movieService';
  * frontend's camelCase/snake_case format used by MovieCard and MovieDetails.
  */
 const mapOmdbToFrontend = (m) => ({
-    id: m.imdbID || m.imdbid || m.imdbId,
+    id: m.imdbID || m.imdbId || m.imdbid,
     title: m.Title || m.title,
     poster: m.Poster || m.poster,
     year: m.Year || m.year,
@@ -20,8 +20,8 @@ const mapOmdbToFrontend = (m) => ({
     awards: m.Awards || m.awards,
     rated: m.Rated || m.rated,
     runtime: m.Runtime || m.runtime,
-    imdb_rating: m.imdbRating || m.imdbrating,
-    imdb_votes: m.imdbVotes || m.imdbvotes,
+    imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
+    imdb_votes: m.imdbVotes || m.imdb_votes || m.imdbvotes,
     metascore: m.Metascore || m.metascore,
 });
 

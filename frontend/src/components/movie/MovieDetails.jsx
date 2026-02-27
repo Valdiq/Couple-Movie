@@ -7,6 +7,7 @@ import { UserFavorite } from "@/entities/UserFavorite";
 import { User as UserEntity } from "@/entities/User";
 import { Movie } from "@/entities/Movie";
 import { coupleMovieService } from "@/services/coupleMovieService";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 export default function MovieDetails({ movie, isOpen, onClose }) {
   const [isFavorite, setIsFavorite] = useState(false);
@@ -17,6 +18,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
   const [addingToCouple, setAddingToCouple] = useState(false);
   const [coupleMessage, setCoupleMessage] = useState(null);
   const [isInCoupleList, setIsInCoupleList] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const displayMovie = fullMovie || movie;
   const movieImdbId = displayMovie?.id || displayMovie?.imdbID || displayMovie?.imdb_id || '';
@@ -135,12 +137,12 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
             className="bg-card text-foreground rounded-2xl border border-border max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative">
-              <div className="absolute top-0 left-0 w-full h-1/2">
-                {displayMovie.poster && displayMovie.poster !== 'N/A' && (
-                  <img src={displayMovie.poster} alt="" className="w-full h-full object-cover opacity-10 blur-lg" />
+            <div className="relative bg-card">
+              <div className="absolute top-0 left-0 w-full h-[80%] overflow-hidden rounded-t-2xl">
+                {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' && (
+                  <img src={displayMovie.poster} alt="" className="w-full h-full object-cover opacity-10 blur-xl scale-110" onError={() => setImgError(true)} />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-card/50 via-card to-card" />
+                <div className="absolute inset-0 bg-gradient-to-b from-card/30 via-card/80 to-card" />
               </div>
 
               <button
@@ -152,15 +154,21 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
               <div className="relative flex flex-col lg:flex-row gap-8 p-8">
                 <div className="lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
-                  {displayMovie.poster && displayMovie.poster !== 'N/A' ? (
+                  {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' ? (
                     <img
                       src={displayMovie.poster}
                       alt={displayMovie.title}
                       className="w-full rounded-xl shadow-2xl shadow-black/40"
+                      onError={() => setImgError(true)}
                     />
                   ) : (
-                    <div className="w-full aspect-[2/3] bg-secondary rounded-xl flex items-center justify-center border border-border">
-                      <Film className="w-24 h-24 text-muted-foreground" />
+                    <div className="w-full aspect-[2/3] bg-secondary rounded-xl flex flex-col items-center justify-center border border-border gap-4 p-4 text-center">
+                      <div className="text-7xl">
+                        <AppleEmoji emoji="🍿" />
+                      </div>
+                      <span className="text-lg font-medium text-muted-foreground">
+                        {displayMovie.title || "Movie"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -221,7 +229,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
               </div>
             </div>
 
-            <div className="px-8 pb-8 space-y-8 -mt-4">
+            <div className="relative px-8 pb-8 space-y-8 mt-4 bg-card">
               {displayMovie.plot && displayMovie.plot !== 'N/A' && (
                 <p className="text-muted-foreground text-base leading-relaxed max-w-3xl">
                   {displayMovie.plot}

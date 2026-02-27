@@ -11,7 +11,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.GenericContainer;
+
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -37,21 +37,11 @@ class CoupleMovieApplicationTests {
                         .withUsername("test")
                         .withPassword("test");
 
-        @Container
-        @SuppressWarnings("resource")
-        static GenericContainer<?> elasticsearch = new GenericContainer<>(
-                        "docker.elastic.co/elasticsearch/elasticsearch:7.17.10")
-                        .withEnv("discovery.type", "single-node")
-                        .withEnv("xpack.security.enabled", "false")
-                        .withExposedPorts(9200);
-
         @DynamicPropertySource
         static void configureProperties(DynamicPropertyRegistry registry) {
                 registry.add("spring.datasource.url", mysql::getJdbcUrl);
                 registry.add("spring.datasource.username", mysql::getUsername);
                 registry.add("spring.datasource.password", mysql::getPassword);
-                registry.add("spring.data.elasticsearch.client.reactive.endpoints",
-                                () -> elasticsearch.getHost() + ":" + elasticsearch.getMappedPort(9200));
         }
 
         @Autowired
@@ -63,7 +53,6 @@ class CoupleMovieApplicationTests {
         @Test
         void contextLoads() {
                 Assertions.assertTrue(mysql.isRunning());
-                Assertions.assertTrue(elasticsearch.isRunning());
         }
 
         @Test

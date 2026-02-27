@@ -67,10 +67,36 @@ public class OmdbService {
     /**
      * Fetch ALL pages of OMDb search results for a title (up to 15 pages = 150
      * results).
-     * OMDb returns 10 results per page.
+     * Now uses Hybrid Search: Checks Meilisearch first for typo tolerance.
+     * Falls back to OMDb returns 10 results per page if local DB returns nothing.
      */
     public Map<String, Object> searchAllMovies(String title) {
         log.info("Searching ALL pages for title: {}", title);
+
+        // 1. Hybrid Search Check: Try Meilisearch/Local DB first for typo tolerance
+        List<vladyslav.stasyshyn.couple_movie.model.Movie> localResults = movieSearchService.searchMovies(title);
+        if (localResults != null && !localResults.isEmpty()) {
+            log.info("Found {} results in local Meilisearch index for title: {}", localResults.size(), title);
+            List<OmdbMovieSummary> mappedResults = new ArrayList<>();
+            for (var m : localResults) {
+                OmdbMovieSummary summary = new OmdbMovieSummary();
+                summary.setImdbID(m.getImdbId());
+                summary.setTitle(m.getTitle());
+                summary.setYear(m.getYear());
+                summary.setType(m.getType());
+                summary.setPoster(m.getPoster());
+                mappedResults.add(summary);
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("Search", mappedResults);
+            result.put("totalResults", String.valueOf(mappedResults.size()));
+            result.put("Response", "True");
+            return result;
+        }
+
+        // 2. Fallback to API if not in DB
+        log.info("No local results found. Falling back to OMDB API for title: {}", title);
         List<OmdbMovieSummary> allResults = new ArrayList<>();
         int totalResults = 0;
         int maxPages = 15;

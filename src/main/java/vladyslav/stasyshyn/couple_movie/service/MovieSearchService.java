@@ -1,24 +1,47 @@
 package vladyslav.stasyshyn.couple_movie.service;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.meilisearch.sdk.Client;
+import com.meilisearch.sdk.Index;
+import com.meilisearch.sdk.SearchRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import vladyslav.stasyshyn.couple_movie.document.MovieDocument;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieDetails;
+import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieSummary;
 import vladyslav.stasyshyn.couple_movie.model.Movie;
 import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
-import vladyslav.stasyshyn.couple_movie.repository.MovieSearchRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MovieSearchService {
 
-    private final MovieSearchRepository movieSearchRepository;
     private final MovieRepository movieRepository;
+    private final Client meilisearchClient;
+    private final ObjectMapper objectMapper;
+    private final String INDEX_NAME = "movies";
+
+    public MovieSearchService(MovieRepository movieRepository, Client meilisearchClient, ObjectMapper objectMapper) {
+        this.movieRepository = movieRepository;
+        this.meilisearchClient = meilisearchClient;
+        this.objectMapper = objectMapper;
+        setupMeilisearch();
+    }
+
+    private void setupMeilisearch() {
+        try {
+            Index index = meilisearchClient.index(INDEX_NAME);
+            com.meilisearch.sdk.model.Settings settings = new com.meilisearch.sdk.model.Settings();
+            settings.setFilterableAttributes(new String[] { "genre" });
+            settings.setSearchableAttributes(new String[] { "title", "genre" });
+            index.updateSettings(settings);
+        } catch (Exception e) {
+            log.warn("Could not setup Meilisearch index configuration during startup. It might not be ready yet.", e);
+        }
+    }
 
     public void saveMovie(OmdbMovieDetails omdbMovie) {
         try {
@@ -41,14 +64,16 @@ public class MovieSearchService {
                     .build();
             movieRepository.save(movie);
 
-            // Save to Elasticsearch for fuzzy search
+            // Save to Meilisearch for fuzzy search
             MovieDocument document = MovieDocument.builder()
                     .imdbID(omdbMovie.getImdbID())
                     .title(omdbMovie.getTitle())
                     .year(omdbMovie.getYear())
                     .genre(omdbMovie.getGenre())
                     .build();
-            movieSearchRepository.save(document);
+
+            String jsonDoc = objectMapper.writeValueAsString(Collections.singletonList(document));
+            meilisearchClient.index(INDEX_NAME).addDocuments(jsonDoc, "imdbID");
             log.info("Indexed and saved movie: {}", omdbMovie.getTitle());
         } catch (Exception e) {
             log.error("Failed to index and save movie: {}", omdbMovie.getTitle(), e);
@@ -90,17 +115,34 @@ public class MovieSearchService {
 
         if (!newMovies.isEmpty()) {
             movieRepository.saveAll(newMovies);
-            movieSearchRepository.saveAll(newDocs);
-            log.info("Batch indexed and saved {} new movie summaries", newMovies.size());
+            try {
+                String jsonDocs = objectMapper.writeValueAsString(newDocs);
+                meilisearchClient.index(INDEX_NAME).addDocuments(jsonDocs, "imdbID");
+                log.info("Batch indexed and saved {} new movie summaries", newMovies.size());
+            } catch (Exception e) {
+                log.error("Failed to batch index summaries to Meilisearch", e);
+            }
         }
     }
 
     public List<Movie> searchMovies(String query) {
-        List<MovieDocument> esResults = movieSearchRepository.searchByTitleFuzzy(query);
-        List<String> ids = esResults.stream().map(MovieDocument::getImdbID).collect(Collectors.toList());
-        if (ids.isEmpty())
+        try {
+            SearchRequest request = SearchRequest.builder()
+                    .q(query)
+                    .attributesToSearchOn(new String[] { "title" })
+                    .limit(50)
+                    .build();
+            com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
+                    .index(INDEX_NAME).search(request);
+            List<String> ids = extractIdsFromHits(searchResult.getHits());
+
+            if (ids.isEmpty())
+                return List.of();
+            return movieRepository.findAllById(ids);
+        } catch (Exception e) {
+            log.error("Error searching movies in Meilisearch", e);
             return List.of();
-        return movieRepository.findAllById(ids);
+        }
     }
 
     public Optional<Movie> getMovieById(String imdbId) {
@@ -112,31 +154,34 @@ public class MovieSearchService {
     }
 
     public List<Movie> searchByGenres(List<String> genres) {
-        // Find IDs from ES based on genre
-        Set<String> ids = new HashSet<>();
         try {
-            String regex = genres.stream().map(String::trim).collect(Collectors.joining("|"));
-            List<MovieDocument> results = movieSearchRepository.findByGenreMatches(regex);
-            ids.addAll(results.stream().map(MovieDocument::getImdbID).collect(Collectors.toList()));
+            // Meilisearch filter format: genre = 'Comedy' OR genre = 'Action'
+            // Since string genres from API like 'Comedy, Romance' aren't perfectly
+            // tokenized
+            // arrays in Meilisearch yet without further config, we can also just use text
+            // search across genre.
+            String queryStr = genres.stream().map(String::trim).collect(Collectors.joining(" "));
+
+            SearchRequest request = SearchRequest.builder()
+                    .q(queryStr)
+                    .attributesToSearchOn(new String[] { "genre" })
+                    .limit(50)
+                    .build();
+
+            com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
+                    .index(INDEX_NAME).search(request);
+            List<String> ids = extractIdsFromHits(searchResult.getHits());
+
+            if (ids.isEmpty())
+                return List.of();
+            return movieRepository.findAllById(ids);
         } catch (Exception e) {
-            for (String genre : genres) {
-                ids.addAll(movieSearchRepository.findByGenreContaining(genre.trim())
-                        .stream().map(MovieDocument::getImdbID).collect(Collectors.toList()));
-            }
-        }
-        if (ids.isEmpty())
+            log.error("Error searching movies by genres in Meilisearch", e);
             return List.of();
-        return movieRepository.findAllById(ids);
+        }
     }
 
     public List<Movie> searchNostalgic() {
-        // For nostalgic we search directly in MySQL, because rating and year aren't
-        // parsed in ES anymore (rating removed)
-        // Let's retrieve all movies from MySQL and filter in memory, or we could add a
-        // DB query.
-        // It's easier to add a DB query for nostalgic but since we don't have it yet,
-        // we stream all.
-        // Or actually, let's just use MySQL. Wait, rating > 9.0 and year <= cutoff.
         int cutoffYear = java.time.Year.now().getValue() - 10;
         List<Movie> allMovies = movieRepository.findAll();
         return allMovies.stream()
@@ -196,5 +241,18 @@ public class MovieSearchService {
         }
 
         return result != null ? result : new ArrayList<>();
+    }
+
+    private List<String> extractIdsFromHits(ArrayList<HashMap<String, Object>> hits) {
+        if (hits == null)
+            return List.of();
+        List<String> ids = new ArrayList<>();
+        for (HashMap<String, Object> hit : hits) {
+            Object idObj = hit.get("imdbID");
+            if (idObj != null) {
+                ids.add(idObj.toString());
+            }
+        }
+        return ids;
     }
 }

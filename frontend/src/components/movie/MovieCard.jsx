@@ -4,6 +4,7 @@ import { Star, Heart, Users, Check, Plus, Film } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { cn } from "@/lib/utils";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 export default function MovieCard({
   movie,
@@ -91,9 +92,12 @@ export default function MovieCard({
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-secondary">
-            <span className="text-4xl font-bold text-muted-foreground">
-              {movieTitle.charAt(0) || <Film className="w-12 h-12" />}
+          <div className="flex h-full w-full flex-col items-center justify-center bg-secondary gap-2 p-4 text-center">
+            <div className="text-5xl">
+              <AppleEmoji emoji="🍿" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground line-clamp-2">
+              {movieTitle || "Movie"}
             </span>
           </div>
         )}
