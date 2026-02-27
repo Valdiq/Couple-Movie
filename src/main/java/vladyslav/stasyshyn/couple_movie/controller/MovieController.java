@@ -113,18 +113,71 @@ public class MovieController {
             if (!allGenres.isEmpty()) {
                 var genreResults = movieSearchService.searchByGenres(new ArrayList<>(allGenres));
                 for (var movie : genreResults) {
-                    seenIds.putIfAbsent(movie.getImdbID(), movie);
+                    seenIds.putIfAbsent(movie.getImdbId(), movie);
                 }
             }
 
             if (includeNostalgic) {
                 var nostalgicResults = movieSearchService.searchNostalgic();
                 for (var movie : nostalgicResults) {
-                    seenIds.putIfAbsent(movie.getImdbID(), movie);
+                    seenIds.putIfAbsent(movie.getImdbId(), movie);
                 }
             }
 
             return ResponseEntity.ok(new ArrayList<>(seenIds.values()));
+        } catch (Exception e) {
+            return ResponseEntity.ok(List.of());
+        }
+    }
+
+    /**
+     * Filter movies combining genres and emotions.
+     */
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterMovies(
+            @RequestParam(value = "genres", required = false) List<String> genres,
+            @RequestParam(value = "emotions", required = false) List<String> emotions) {
+        try {
+            boolean hasGenres = genres != null && !genres.isEmpty();
+            boolean hasEmotions = emotions != null && !emotions.isEmpty();
+
+            if (!hasGenres && !hasEmotions) {
+                return ResponseEntity.ok(List.of());
+            }
+
+            Set<String> emotionGenres = new HashSet<>();
+            boolean includeNostalgic = false;
+            boolean hasValidEmotionForGenres = false;
+
+            if (hasEmotions && emotions != null) {
+                boolean firstEmotion = true;
+                for (String emotion : emotions) {
+                    if ("nostalgic".equalsIgnoreCase(emotion.trim())) {
+                        includeNostalgic = true;
+                        continue;
+                    }
+                    List<String> currentEmotionGenres = emotionGenreService.getGenresForEmotion(emotion.trim());
+                    if (firstEmotion) {
+                        emotionGenres.addAll(currentEmotionGenres);
+                        firstEmotion = false;
+                        hasValidEmotionForGenres = true;
+                    } else {
+                        emotionGenres.retainAll(currentEmotionGenres);
+                    }
+                }
+            }
+
+            // If emotions were provided but resulted in an empty set of intersected genres
+            // (e.g. "Happy" and "Mysterious" have no overlapping genres), and they weren't
+            // JUST "nostalgic"
+            // Then the result should be empty.
+            if (hasValidEmotionForGenres && emotionGenres.isEmpty()) {
+                // Intersected emotions yielded no common genres
+                return ResponseEntity.ok(List.of());
+            }
+
+            return ResponseEntity
+                    .ok(movieSearchService.filterMovies(genres, new ArrayList<>(emotionGenres), includeNostalgic));
         } catch (Exception e) {
             return ResponseEntity.ok(List.of());
         }
@@ -137,9 +190,25 @@ public class MovieController {
     public ResponseEntity<?> getMovieDetails(@PathVariable("imdbId") String imdbId) {
         var cachedMovie = movieSearchService.getMovieById(imdbId);
         if (cachedMovie.isPresent()) {
-            return ResponseEntity.ok(cachedMovie.get());
+            var movie = cachedMovie.get();
+            // A movie saved from batch searching might be missing full details
+            if (movie.getDirector() != null && movie.getPlot() != null && movie.getGenre() != null) {
+                return ResponseEntity.ok(movie);
+            }
         }
         return ResponseEntity.ok(omdbService.getMovieDetails(imdbId));
+    }
+
+    /**
+     * Get a random movie from the database (Surprise Me feature).
+     */
+    @GetMapping("/random")
+    public ResponseEntity<?> getRandomMovie() {
+        var movie = movieSearchService.getRandomMovie();
+        if (movie != null) {
+            return ResponseEntity.ok(movie);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     /**

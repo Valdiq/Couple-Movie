@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trash2, Star, Loader2, Eye, Film } from "lucide-react";
+import { Heart, Trash2, Star, Loader2, Eye, Film, BookmarkCheck } from "lucide-react";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { User } from "@/entities/User";
 import MovieDetails from "../components/movie/MovieDetails";
@@ -130,38 +130,37 @@ export default function Favorites() {
   return (
     <div className="min-h-screen bg-background pb-8">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-          <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
-            <Heart className="h-7 w-7 text-accent" />
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10 text-center">
+          <h1 className="mb-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
             My <span className="gradient-text">Favorites</span>
           </h1>
+          <p className="text-muted-foreground mt-2">Keep track of movies you love and want to watch.</p>
         </motion.div>
 
         {/* Stats + Tabs */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
           <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="mb-4 flex items-center justify-center gap-6">
-              <div className="text-center"><h3 className="text-2xl font-bold text-foreground">{favorites.length}</h3><p className="text-xs text-muted-foreground">Total</p></div>
+            <div className="mb-4 flex items-center justify-center gap-8">
+              <div className="text-center"><p className="text-3xl font-bold text-foreground">{favorites.length}</p><p className="text-xs text-muted-foreground mt-1">Total</p></div>
               <div className="h-8 w-px bg-border" />
-              <div className="text-center"><h3 className="text-2xl font-bold text-green-400">{watchedCount}</h3><p className="text-xs text-muted-foreground">Watched</p></div>
+              <div className="text-center"><p className="text-3xl font-bold text-green-400">{watchedCount}</p><p className="text-xs text-muted-foreground mt-1">Watched</p></div>
               <div className="h-8 w-px bg-border" />
-              <div className="text-center"><h3 className="text-2xl font-bold text-primary">{planCount}</h3><p className="text-xs text-muted-foreground">Plan to Watch</p></div>
+              <div className="text-center"><p className="text-3xl font-bold text-primary">{planCount}</p><p className="text-xs text-muted-foreground mt-1">Watchlist</p></div>
             </div>
-            <div className="flex justify-center gap-2">
+            <div className="flex gap-1 rounded-xl border border-border bg-card/50 p-1.5">
               {[
-                { key: 'all', label: 'All', count: favorites.length },
-                { key: 'plan', label: 'Plan to Watch', count: planCount },
-                { key: 'watched', label: 'Watched', count: watchedCount }
+                { key: 'all', label: 'All', icon: Film, count: favorites.length },
+                { key: 'plan', label: 'Watchlist', icon: BookmarkCheck, count: planCount },
+                { key: 'watched', label: 'Watched', icon: Eye, count: watchedCount }
               ].map(tab => (
                 <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab.key
-                      ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg'
-                      : 'border border-border bg-card text-muted-foreground hover:text-foreground'
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${activeTab === tab.key
+                    ? 'bg-gradient-to-r from-primary/80 to-accent/80 text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
-                  {tab.label} ({tab.count})
+                  <tab.icon className="h-4 w-4" />{tab.label}
+                  <span className="text-xs opacity-70 ml-1">({tab.count})</span>
                 </button>
               ))}
             </div>
@@ -193,8 +192,8 @@ export default function Favorites() {
 
                       <button
                         className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${fav.watch_status === 'WATCHED'
-                            ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                            : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
+                          ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                          : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
                           }`}
                         onClick={(e) => { e.stopPropagation(); toggleWatchStatus(fav); }}
                         title={fav.watch_status === 'WATCHED' ? 'Click to move back to Plan to Watch' : 'Click to mark as Watched'}

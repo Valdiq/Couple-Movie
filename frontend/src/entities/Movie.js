@@ -5,7 +5,7 @@ import { movieService } from '../services/movieService';
  * frontend's camelCase/snake_case format used by MovieCard and MovieDetails.
  */
 const mapOmdbToFrontend = (m) => ({
-    id: m.imdbID || m.imdbid,
+    id: m.imdbID || m.imdbid || m.imdbId,
     title: m.Title || m.title,
     poster: m.Poster || m.poster,
     year: m.Year || m.year,
@@ -135,7 +135,38 @@ export const Movie = {
             return [];
         }
     },
+    filter: async (genres, emotions) => {
+        try {
+            const results = await movieService.filter(genres, emotions);
+            if (Array.isArray(results)) {
+                return results.map(m => ({
+                    id: m.imdbID,
+                    title: m.title,
+                    poster: m.poster,
+                    year: m.year,
+                    type: m.type,
+                    genre: m.genre,
+                    director: m.director,
+                    plot: m.plot,
+                    imdb_rating: m.imdbRating,
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to filter movies", e);
+            return [];
+        }
+    },
     get: async (id) => {
         return movieService.getDetails(id);
+    },
+    getRandom: async () => {
+        try {
+            const data = await movieService.getRandom();
+            return data ? mapOmdbToFrontend(data) : null;
+        } catch (e) {
+            console.error("Failed to get random movie", e);
+            return null;
+        }
     }
 };

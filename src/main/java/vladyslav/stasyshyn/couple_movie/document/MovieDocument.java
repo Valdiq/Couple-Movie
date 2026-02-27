@@ -21,21 +21,6 @@ public class MovieDocument {
     @Field(type = FieldType.Keyword)
     private String year;
 
-    @Field(type = FieldType.Keyword)
-    private String type;
-
-    @Field(type = FieldType.Keyword)
-    private String poster;
-
     @Field(type = FieldType.Text, analyzer = "standard")
     private String genre;
-
-    @Field(type = FieldType.Text, analyzer = "standard")
-    private String director;
-
-    @Field(type = FieldType.Text, analyzer = "standard")
-    private String plot;
-
-    @Field(type = FieldType.Double)
-    private Double imdbRating;
 }

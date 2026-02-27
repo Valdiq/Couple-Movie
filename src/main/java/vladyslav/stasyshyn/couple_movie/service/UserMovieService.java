@@ -3,7 +3,7 @@ package vladyslav.stasyshyn.couple_movie.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vladyslav.stasyshyn.couple_movie.document.MovieDocument;
+import vladyslav.stasyshyn.couple_movie.model.Movie;
 import vladyslav.stasyshyn.couple_movie.model.MovieStatus;
 import vladyslav.stasyshyn.couple_movie.model.User;
 import vladyslav.stasyshyn.couple_movie.model.UserMovieStatus;
@@ -66,7 +66,7 @@ public class UserMovieService {
         return userMovieStatusRepository.findByUserAndStatus(user, MovieStatus.PLAN_TO_WATCH);
     }
 
-    public List<MovieDocument> getSharedWatchlist(User user) {
+    public List<Movie> getSharedWatchlist(User user) {
         if (user.getPartnerId() == null) {
             return List.of();
         }
@@ -87,7 +87,7 @@ public class UserMovieService {
                 .collect(Collectors.toList());
 
         // Fetch detailed movie docs for these IDs
-        List<MovieDocument> sharedMovies = new ArrayList<>();
+        List<Movie> sharedMovies = new ArrayList<>();
         for (String imdbId : sharedImdbIds) {
             movieSearchService.getMovieById(imdbId).ifPresent(sharedMovies::add);
         }

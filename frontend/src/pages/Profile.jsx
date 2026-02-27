@@ -29,6 +29,7 @@ export default function Profile() {
   const [isResettingPw, setIsResettingPw] = useState(false);
   const [showBreakConfirm, setShowBreakConfirm] = useState(false);
   const [isBreaking, setIsBreaking] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => { loadProfile(); }, [authUser]);
 
@@ -106,6 +107,17 @@ export default function Profile() {
     setIsBreaking(false);
   };
 
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    try {
+      await authService.resendVerification(currentUser.email);
+      setMessage({ type: 'success', text: 'Verification link sent to your email!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to send verification email' });
+    }
+    setIsResending(false);
+  };
+
   if (isLoadingAuth || isLoading) {
     return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -142,6 +154,20 @@ export default function Profile() {
         </div>
         <h2 className="text-2xl font-bold text-foreground">{fullName}</h2>
         {currentUser.username && <p className="mt-1 text-sm text-muted-foreground">@{currentUser.username}</p>}
+        {currentUser && (
+          <div className="mt-3 flex items-center justify-center gap-2 text-sm">
+            {currentUser.is_verified ? (
+              <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-400 gap-1"><Check className="h-3 w-3" /> Verified</Badge>
+            ) : (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-400 gap-1"><X className="h-3 w-3" /> Unverified</Badge>
+                <button onClick={handleResendVerification} disabled={isResending} className="text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50">
+                  {isResending ? 'Sending...' : 'Resend Link'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Messages */}
@@ -190,15 +216,23 @@ export default function Profile() {
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent font-bold text-primary-foreground">
-                  {(currentUser.firstname || fullName || 'U')[0].toUpperCase()}
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-accent font-bold text-primary-foreground">
+                  {currentUser?.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt="You" className="h-full w-full object-cover" />
+                  ) : (
+                    (currentUser.firstname || fullName || 'U')[0].toUpperCase()
+                  )}
                 </div>
                 <span className="text-sm font-medium text-foreground">{currentUser.firstname || fullName}</span>
               </div>
               <Heart className="h-4 w-4 fill-accent text-accent" />
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-destructive font-bold text-primary-foreground">
-                  {(partner.firstName || partner.username || 'P')[0].toUpperCase()}
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-destructive font-bold text-primary-foreground">
+                  {partner?.avatar_url ? (
+                    <img src={partner.avatar_url} alt="Partner" className="h-full w-full object-cover" />
+                  ) : (
+                    (partner.firstName || partner.username || 'P')[0].toUpperCase()
+                  )}
                 </div>
                 <span className="text-sm font-medium text-foreground">{partner.firstName} {partner.lastName}</span>
               </div>

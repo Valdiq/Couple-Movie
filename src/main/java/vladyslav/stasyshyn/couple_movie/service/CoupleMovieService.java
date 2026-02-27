@@ -188,4 +188,22 @@ public class CoupleMovieService {
         result.put("message", "Rated successfully");
         return result;
     }
+
+    public Map<String, Object> checkMovie(User user, String imdbId) {
+        if (user.getPartnerId() == null) {
+            return Map.of("in_list", false);
+        }
+        String coupleKey = getCoupleKey(user);
+        var opt = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
+        if (opt.isEmpty()) {
+            return Map.of("in_list", false);
+        }
+
+        CoupleMovie movie = opt.get();
+        boolean userAdded = movie.getAddedByUserId() != null && movie.getAddedByUserId().equals(user.getId())
+                ? movie.isUserYouAdded()
+                : movie.isPartnerAdded();
+
+        return Map.of("in_list", userAdded);
+    }
 }

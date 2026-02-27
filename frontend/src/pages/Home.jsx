@@ -8,20 +8,21 @@ import { createPageUrl } from "@/utils";
 import MovieCard from "../components/movie/MovieCard";
 import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 const EMOTIONS = [
-  { name: "romantic", label: "Romantic 💕" },
-  { name: "exciting", label: "Exciting ⚡" },
-  { name: "happy", label: "Happy 😊" },
-  { name: "cozy", label: "Cozy ☕" },
-  { name: "thrilling", label: "Thrilling 🎯" },
-  { name: "uplifting", label: "Uplifting ☀️" },
-  { name: "nostalgic", label: "Nostalgic 🧠" },
-  { name: "mysterious", label: "Mysterious 🌙" },
-  { name: "adventurous", label: "Adventurous 🚀" },
-  { name: "emotional", label: "Emotional 💧" },
-  { name: "passionate", label: "Passionate 🔥" },
-  { name: "inspiring", label: "Inspiring ⭐" },
+  { name: "romantic", text: "Romantic", emoji: "💕" },
+  { name: "exciting", text: "Exciting", emoji: "⚡" },
+  { name: "happy", text: "Happy", emoji: "😊" },
+  { name: "cozy", text: "Cozy", emoji: "☕" },
+  { name: "thrilling", text: "Thrilling", emoji: "🎯" },
+  { name: "uplifting", text: "Uplifting", emoji: "☀️" },
+  { name: "nostalgic", text: "Nostalgic", emoji: "🧠" },
+  { name: "mysterious", text: "Mysterious", emoji: "🌙" },
+  { name: "adventurous", text: "Adventurous", emoji: "🚀" },
+  { name: "emotional", text: "Emotional", emoji: "💧" },
+  { name: "passionate", text: "Passionate", emoji: "🔥" },
+  { name: "inspiring", text: "Inspiring", emoji: "⭐" },
 ];
 
 export default function Home() {
@@ -55,12 +56,14 @@ export default function Home() {
     }
   };
 
-  const getRandomMovie = () => {
-    if (movies.length > 0) {
-      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+  const getRandomMovie = async () => {
+    setIsLoading(true);
+    const randomMovie = await Movie.getRandom();
+    if (randomMovie) {
       setSelectedMovie(randomMovie);
       setIsDetailsOpen(true);
     }
+    setIsLoading(false);
   };
 
   const clearMood = () => {
@@ -116,7 +119,7 @@ export default function Home() {
                   : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30"
                   }`}
               >
-                {emotion.label}
+                {emotion.text} <AppleEmoji emoji={emotion.emoji} className="ml-1" />
               </button>
             ))}
           </motion.div>
@@ -146,6 +149,30 @@ export default function Home() {
             >
               Discover
             </Button>
+            <Button
+              onClick={getRandomMovie}
+              disabled={isLoading}
+              className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2 hidden sm:flex"
+            >
+              <Shuffle className="h-4 w-4" />
+              Surprise Me
+            </Button>
+          </motion.div>
+          {/* Mobile Surprise Me button below */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-4 flex sm:hidden justify-center"
+          >
+            <Button
+              onClick={getRandomMovie}
+              disabled={isLoading}
+              className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2"
+            >
+              <Shuffle className="h-4 w-4" />
+              Surprise Me
+            </Button>
           </motion.div>
 
           {/* Action buttons */}
@@ -162,14 +189,6 @@ export default function Home() {
               >
                 <X className="h-4 w-4" />
                 Clear Mood
-              </Button>
-              <Button
-                onClick={getRandomMovie}
-                disabled={movies.length === 0}
-                className="rounded-xl bg-card border border-border text-foreground hover:bg-secondary gap-2"
-              >
-                <Shuffle className="h-4 w-4" />
-                Surprise Me
               </Button>
             </motion.div>
           )}
@@ -222,8 +241,8 @@ export default function Home() {
           )}
 
           {!isLoading && movies.length === 0 && (
-            <div className="py-16 text-center">
-              <div className="mb-4 text-5xl">🎬</div>
+            <div className="py-16 text-center shadow-none">
+              <div className="mb-4 text-5xl flex justify-center"><AppleEmoji emoji="🎬" /></div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">No movies found</h3>
               <p className="mb-6 text-muted-foreground">
                 Try searching for movies first to build the cache, or choose a different emotion.

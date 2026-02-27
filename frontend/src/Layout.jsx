@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Film, Search, Heart, Users, User, Crown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/AuthContext";
 
 const NAV_ITEMS = [
   { page: "Home", label: "Home", icon: Film },
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -21,8 +23,8 @@ export default function Layout({ children, currentPageName }) {
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
           {/* Logo */}
           <Link to={createPageUrl("Home")} className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <Film className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg shadow-sm">
+              <img src="/logo.png" alt="CoupleMovie Logo" className="h-full w-full object-cover" />
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground">
               Couple<span className="gradient-text">Movie</span>
@@ -62,9 +64,13 @@ export default function Layout({ children, currentPageName }) {
             </Link>
             <Link
               to={createPageUrl("Profile")}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground hover:ring-2 hover:ring-primary/50"
             >
-              <User className="h-4 w-4" />
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-4 w-4" />
+              )}
             </Link>
           </div>
 
@@ -115,7 +121,11 @@ export default function Layout({ children, currentPageName }) {
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
               >
-                <User className="h-4 w-4" />
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="Profile" className="h-6 w-6 rounded-full object-cover" />
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
                 Profile
               </Link>
             </div>

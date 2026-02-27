@@ -85,4 +85,13 @@ public class CoupleMovieController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/check/{imdbId}")
+    public ResponseEntity<?> checkMovie(@AuthenticationPrincipal User user, @PathVariable String imdbId) {
+        try {
+            return ResponseEntity.ok(coupleMovieService.checkMovie(user, imdbId));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

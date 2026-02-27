@@ -21,7 +21,7 @@ const Login = () => {
         setLoading(true);
         try {
             await login(email, password);
-            toast({ title: "Login Successful", description: "Welcome back!" });
+            toast({ variant: "success", title: "Login Successful", description: "Welcome back!" });
             navigate('/');
         } catch (error) {
             toast({ variant: "destructive", title: "Login Failed", description: error.response?.data?.message || "Invalid credentials" });
@@ -54,7 +54,12 @@ const Login = () => {
                                 className="border-border bg-background text-foreground" />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Password</Label>
+                                <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors">
+                                    Forgot Password?
+                                </Link>
+                            </div>
                             <Input id="password" type="password" value={password}
                                 onChange={(e) => setPassword(e.target.value)} required
                                 className="border-border bg-background text-foreground" />
