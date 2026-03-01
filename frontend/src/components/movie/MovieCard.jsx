@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, Heart, Users, Check, Plus, Film } from "lucide-react";
+import { Star, Heart, Users, Check, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { cn } from "@/lib/utils";

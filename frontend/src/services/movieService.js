@@ -32,6 +32,10 @@ export const movieService = {
         const response = await api.get(`/movies/filter`, { params });
         return response.data;
     },
+    autocomplete: async (query, limit = 5) => {
+        const response = await api.get(`/movies/autocomplete`, { params: { query, limit } });
+        return response.data;
+    },
     getDetails: async (id) => {
         const response = await api.get(`/movies/${id}`);
         return response.data;

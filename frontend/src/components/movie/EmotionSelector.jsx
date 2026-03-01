@@ -5,8 +5,7 @@ import {
   Heart, Zap, Smile, Droplets, Sun, Moon, Coffee, Flame,
   ThumbsUp, Frown, Angry, Meh, SmilePlus, Shell, Orbit,
   Glasses, Brain, Leaf, Star,
-  Sparkles, Crown, Target, Music, Rainbow, Sword,
-  Shield, Rocket, Bomb, MessageCircleQuestion
+  Sparkles, Crown, Target, Music, Rainbow, Sword, Rocket, Bomb, MessageCircleQuestion
 } from "lucide-react";
 
 const emotions = [

@@ -11,18 +11,18 @@ import ChatWidget from "../components/chat/ChatWidget";
 import AppleEmoji from "@/components/ui/AppleEmoji";
 
 const EMOTIONS = [
-  { name: "romantic", text: "Romantic", emoji: "💕" },
-  { name: "exciting", text: "Exciting", emoji: "⚡" },
-  { name: "happy", text: "Happy", emoji: "😊" },
-  { name: "cozy", text: "Cozy", emoji: "☕" },
-  { name: "thrilling", text: "Thrilling", emoji: "🎯" },
-  { name: "uplifting", text: "Uplifting", emoji: "☀️" },
-  { name: "nostalgic", text: "Nostalgic", emoji: "🧠" },
-  { name: "mysterious", text: "Mysterious", emoji: "🌙" },
-  { name: "adventurous", text: "Adventurous", emoji: "🚀" },
-  { name: "emotional", text: "Emotional", emoji: "💧" },
-  { name: "passionate", text: "Passionate", emoji: "🔥" },
-  { name: "inspiring", text: "Inspiring", emoji: "⭐" },
+  { name: "Romantic", text: "Romantic", emoji: "💕" },
+  { name: "Exciting", text: "Exciting", emoji: "⚡" },
+  { name: "Happy", text: "Happy", emoji: "😊" },
+  { name: "Cozy", text: "Cozy", emoji: "☕" },
+  { name: "Thrilling", text: "Thrilling", emoji: "🎯" },
+  { name: "Uplifting", text: "Uplifting", emoji: "☀️" },
+  { name: "Nostalgic", text: "Nostalgic", emoji: "🧠" },
+  { name: "Mysterious", text: "Mysterious", emoji: "🌙" },
+  { name: "Adventurous", text: "Adventurous", emoji: "🚀" },
+  { name: "Emotional", text: "Emotional", emoji: "💧" },
+  { name: "Passionate", text: "Passionate", emoji: "🔥" },
+  { name: "Inspiring", text: "Inspiring", emoji: "⭐" },
 ];
 
 export default function Home() {

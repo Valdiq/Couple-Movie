@@ -52,6 +52,16 @@ public class MovieController {
     }
 
     /**
+     * Autocomplete suggestions using Elasticsearch for cached movies.
+     */
+    @GetMapping("/autocomplete")
+    public ResponseEntity<?> autocomplete(
+            @RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return ResponseEntity.ok(movieSearchService.autocomplete(query, limit));
+    }
+
+    /**
      * Search movies in Elasticsearch cache by one or more genres.
      */
     @GetMapping("/by-genres")
@@ -145,39 +155,24 @@ public class MovieController {
                 return ResponseEntity.ok(List.of());
             }
 
-            Set<String> emotionGenres = new HashSet<>();
+            List<List<String>> mappedEmotions = new ArrayList<>();
             boolean includeNostalgic = false;
-            boolean hasValidEmotionForGenres = false;
 
             if (hasEmotions && emotions != null) {
-                boolean firstEmotion = true;
                 for (String emotion : emotions) {
                     if ("nostalgic".equalsIgnoreCase(emotion.trim())) {
                         includeNostalgic = true;
                         continue;
                     }
                     List<String> currentEmotionGenres = emotionGenreService.getGenresForEmotion(emotion.trim());
-                    if (firstEmotion) {
-                        emotionGenres.addAll(currentEmotionGenres);
-                        firstEmotion = false;
-                        hasValidEmotionForGenres = true;
-                    } else {
-                        emotionGenres.retainAll(currentEmotionGenres);
+                    if (!currentEmotionGenres.isEmpty()) {
+                        mappedEmotions.add(currentEmotionGenres);
                     }
                 }
             }
 
-            // If emotions were provided but resulted in an empty set of intersected genres
-            // (e.g. "Happy" and "Mysterious" have no overlapping genres), and they weren't
-            // JUST "nostalgic"
-            // Then the result should be empty.
-            if (hasValidEmotionForGenres && emotionGenres.isEmpty()) {
-                // Intersected emotions yielded no common genres
-                return ResponseEntity.ok(List.of());
-            }
-
             return ResponseEntity
-                    .ok(movieSearchService.filterMovies(genres, new ArrayList<>(emotionGenres), includeNostalgic));
+                    .ok(movieSearchService.filterMovies(genres, mappedEmotions, includeNostalgic));
         } catch (Exception e) {
             return ResponseEntity.ok(List.of());
         }

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search as SearchIcon, Filter, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Search as SearchIcon, Filter, Loader2, X, ChevronDown, ChevronUp, Film } from "lucide-react";
+import debounce from "lodash/debounce";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,12 @@ export default function Search() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Autocomplete state
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const suggestionsRef = useRef(null);
 
   useEffect(() => {
     if (selectedGenres.length > 0 || selectedEmotions.length > 0) {
@@ -81,6 +88,37 @@ export default function Search() {
     setIsSearching(false);
   };
 
+  const fetchSuggestions = useCallback(
+    debounce(async (query) => {
+      if (!query.trim()) {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+        setIsSuggesting(false);
+        return;
+      }
+      setIsSuggesting(true);
+      try {
+        const results = await Movie.autocomplete(query.trim(), 5);
+        setSearchSuggestions(results);
+        if (results.length > 0) {
+          setShowSuggestions(true);
+        } else {
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch suggestions", error);
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 300),
+    []
+  );
+
+  const handleSuggestionClick = (suggestion) => {
+    setShowSuggestions(false);
+    handleMovieSelect(suggestion);
+  };
+
   const toggleGenre = (genre) => {
     const newGenres = selectedGenres.includes(genre)
       ? selectedGenres.filter(g => g !== genre) : [...selectedGenres, genre];
@@ -105,6 +143,16 @@ export default function Search() {
     setIsDetailsOpen(true);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const totalPages = Math.ceil(filteredMovies.length / ITEMS_PER_PAGE);
   const paginatedMovies = filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   const moviesWithRatings = paginatedMovies.map(m => ({ ...m, imdb_rating: m.imdb_rating || ratings[m.id] || null }));
@@ -126,16 +174,71 @@ export default function Search() {
         <div className="space-y-6">
           {/* Search bar */}
           <motion.form onSubmit={handleSearch} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="mx-auto flex max-w-2xl gap-2"
+            className="mx-auto flex max-w-2xl gap-2 z-40 relative"
           >
-            <div className="relative flex-1">
+            <div className="relative flex-1" ref={suggestionsRef}>
               <SearchIcon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  fetchSuggestions(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => {
+                  if (searchSuggestions.length > 0) setShowSuggestions(true);
+                }}
                 placeholder="Search by movie title..."
                 className="h-12 w-full rounded-xl border-border bg-card pl-12 text-foreground placeholder:text-muted-foreground focus:border-primary"
               />
+
+              {/* Autocomplete Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+                  >
+                    <ul>
+                      {searchSuggestions.map((suggestion, index) => (
+                        <li key={suggestion.id || index}>
+                          <button
+                            type="button"
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/80 focus:bg-secondary/80 focus:outline-none"
+                          >
+                            {suggestion.poster && suggestion.poster !== "N/A" ? (
+                              <img src={suggestion.poster} alt={suggestion.title} className="h-10 w-7 rounded object-cover shadow-sm" />
+                            ) : (
+                              <div className="flex h-10 w-7 items-center justify-center rounded bg-secondary text-muted-foreground">
+                                <Film className="h-4 w-4" />
+                              </div>
+                            )}
+                            <div className="flex flex-col flex-1 truncate">
+                              <span className="truncate font-medium text-foreground">{suggestion.title}</span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {suggestion.year && <span>{suggestion.year}</span>}
+                                {suggestion.genre && (
+                                  <>
+                                    <span className="h-1 w-1 rounded-full bg-border" />
+                                    <span className="truncate">{suggestion.genre.split(',')[0]}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {suggestion.imdb_rating && suggestion.imdb_rating !== "N/A" && (
+                              <Badge variant="secondary" className="ml-2 font-mono text-xs">⭐ {suggestion.imdb_rating}</Badge>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <Button type="submit" disabled={isSearching}
               className="h-12 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2 shadow-lg shadow-primary/20"

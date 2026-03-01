@@ -4,7 +4,7 @@ import { User as UserEntity } from '@/entities/User';
 import { Couple } from '@/entities/Couple';
 import { coupleMovieService } from '@/services/coupleMovieService';
 import { useAuth } from '@/lib/AuthContext';
-import { Heart, Users, Send, UserPlus, Film, X, Check, Loader2, Star, Eye, BookmarkCheck, Trash2, Plus, Unlink } from 'lucide-react';
+import { Heart, Send, UserPlus, Film, X, Check, Loader2, Star, Eye, BookmarkCheck, Trash2, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import MovieDetails from '../components/movie/MovieDetails';
 import Pagination from '../components/ui/Pagination';

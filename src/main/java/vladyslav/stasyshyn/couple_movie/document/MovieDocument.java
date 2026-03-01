@@ -11,4 +11,5 @@ public class MovieDocument {
     private String title;
     private String year;
     private String genre;
+    private Double imdbRating;
 }

@@ -48,6 +48,26 @@ export const Movie = {
             return [];
         }
     },
+    autocomplete: async (query, limit = 5) => {
+        try {
+            const results = await movieService.autocomplete(query, limit);
+            if (Array.isArray(results)) {
+                return results.map(m => ({
+                    id: m.imdbId || m.imdbID,
+                    title: m.title,
+                    poster: m.poster,
+                    year: m.year,
+                    type: m.type,
+                    genre: m.genre,
+                    imdb_rating: m.imdbRating || m.imdb_rating,
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to autocomplete movies", e);
+            return [];
+        }
+    },
     batchRatings: async (ids) => {
         try {
             return await movieService.batchRatings(ids);

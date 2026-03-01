@@ -19,4 +19,6 @@ public class OmdbMovieSummary {
 
     @JsonProperty("Poster")
     private String poster;
+
+    private Double imdbRating;
 }

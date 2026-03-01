@@ -37,9 +37,39 @@ public class MovieSearchService {
             com.meilisearch.sdk.model.Settings settings = new com.meilisearch.sdk.model.Settings();
             settings.setFilterableAttributes(new String[] { "genre" });
             settings.setSearchableAttributes(new String[] { "title", "genre" });
+            settings.setSortableAttributes(new String[] { "imdbRating" });
             index.updateSettings(settings);
         } catch (Exception e) {
             log.warn("Could not setup Meilisearch index configuration during startup. It might not be ready yet.", e);
+        }
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void syncDatabaseToMeilisearch() {
+        log.info(
+                "Application ready. Syncing all MySQL movies to Meilisearch to ensure index integrity and sorting compatibility...");
+        try {
+            List<Movie> allMovies = movieRepository.findAll();
+            if (allMovies.isEmpty()) {
+                log.info("No movies found in MySQL to sync.");
+                return;
+            }
+
+            List<MovieDocument> documents = allMovies.stream().map(m -> MovieDocument.builder()
+                    .imdbID(m.getImdbId())
+                    .title(m.getTitle())
+                    .year(m.getYear())
+                    .genre(m.getGenre())
+                    .imdbRating(m.getImdbRating() != null ? m.getImdbRating() : 0.0)
+                    .build()).collect(Collectors.toList());
+
+            // Add documents in batches of 1000 if necessary, but for ~几hundred it's fine
+            String jsonDocs = objectMapper.writeValueAsString(documents);
+            meilisearchClient.index(INDEX_NAME).addDocuments(jsonDocs, "imdbID");
+
+            log.info("Successfully pushed {} historical movies from MySQL to Meilisearch index.", allMovies.size());
+        } catch (Exception e) {
+            log.error("Failed to sync historical MySQL movies to Meilisearch on startup.", e);
         }
     }
 
@@ -70,6 +100,7 @@ public class MovieSearchService {
                     .title(omdbMovie.getTitle())
                     .year(omdbMovie.getYear())
                     .genre(omdbMovie.getGenre())
+                    .imdbRating(rating)
                     .build();
 
             String jsonDoc = objectMapper.writeValueAsString(Collections.singletonList(document));
@@ -130,7 +161,8 @@ public class MovieSearchService {
             SearchRequest request = SearchRequest.builder()
                     .q(query)
                     .attributesToSearchOn(new String[] { "title" })
-                    .limit(50)
+                    .limit(1000)
+                    .sort(new String[] { "imdbRating:desc" })
                     .build();
             com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
                     .index(INDEX_NAME).search(request);
@@ -138,9 +170,50 @@ public class MovieSearchService {
 
             if (ids.isEmpty())
                 return List.of();
-            return movieRepository.findAllById(ids);
+
+            List<Movie> unsortedMovies = movieRepository.findAllById(ids);
+            Map<String, Movie> movieMap = unsortedMovies.stream()
+                    .collect(Collectors.toMap(Movie::getImdbId, m -> m));
+            List<Movie> sortedMovies = new ArrayList<>();
+            for (String id : ids) {
+                if (movieMap.containsKey(id)) {
+                    sortedMovies.add(movieMap.get(id));
+                }
+            }
+            return sortedMovies;
         } catch (Exception e) {
             log.error("Error searching movies in Meilisearch", e);
+            return List.of();
+        }
+    }
+
+    public List<Movie> autocomplete(String query, int limit) {
+        try {
+            SearchRequest request = SearchRequest.builder()
+                    .q(query)
+                    .attributesToSearchOn(new String[] { "title" })
+                    .limit(limit)
+                    .sort(new String[] { "imdbRating:desc" })
+                    .build();
+            com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
+                    .index(INDEX_NAME).search(request);
+            List<String> ids = extractIdsFromHits(searchResult.getHits());
+
+            if (ids.isEmpty())
+                return List.of();
+
+            List<Movie> unsortedMovies = movieRepository.findAllById(ids);
+            Map<String, Movie> movieMap = unsortedMovies.stream()
+                    .collect(Collectors.toMap(Movie::getImdbId, m -> m));
+            List<Movie> sortedMovies = new ArrayList<>();
+            for (String id : ids) {
+                if (movieMap.containsKey(id)) {
+                    sortedMovies.add(movieMap.get(id));
+                }
+            }
+            return sortedMovies;
+        } catch (Exception e) {
+            log.error("Error autocompleting movies in Meilisearch", e);
             return List.of();
         }
     }
@@ -155,26 +228,28 @@ public class MovieSearchService {
 
     public List<Movie> searchByGenres(List<String> genres) {
         try {
-            // Meilisearch filter format: genre = 'Comedy' OR genre = 'Action'
-            // Since string genres from API like 'Comedy, Romance' aren't perfectly
-            // tokenized
-            // arrays in Meilisearch yet without further config, we can also just use text
-            // search across genre.
-            String queryStr = genres.stream().map(String::trim).collect(Collectors.joining(" "));
-
-            SearchRequest request = SearchRequest.builder()
-                    .q(queryStr)
-                    .attributesToSearchOn(new String[] { "genre" })
-                    .limit(50)
-                    .build();
-
-            com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
-                    .index(INDEX_NAME).search(request);
-            List<String> ids = extractIdsFromHits(searchResult.getHits());
-
-            if (ids.isEmpty())
+            if (genres == null || genres.isEmpty())
                 return List.of();
-            return movieRepository.findAllById(ids);
+
+            Set<String> allIds = new HashSet<>();
+            for (String genre : genres) {
+                SearchRequest request = SearchRequest.builder()
+                        .q(genre.trim())
+                        .attributesToSearchOn(new String[] { "genre" })
+                        .limit(1000)
+                        .sort(new String[] { "imdbRating:desc" })
+                        .build();
+
+                com.meilisearch.sdk.model.SearchResult searchResult = (com.meilisearch.sdk.model.SearchResult) meilisearchClient
+                        .index(INDEX_NAME).search(request);
+                List<String> ids = extractIdsFromHits(searchResult.getHits());
+                allIds.addAll(ids);
+            }
+
+            if (allIds.isEmpty())
+                return List.of();
+
+            return movieRepository.findAllById(allIds);
         } catch (Exception e) {
             log.error("Error searching movies by genres in Meilisearch", e);
             return List.of();
@@ -197,18 +272,29 @@ public class MovieSearchService {
                     }
                     return false;
                 })
+                .sorted(java.util.Comparator.comparing(Movie::getImdbRating,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .collect(Collectors.toList());
     }
 
-    public List<Movie> filterMovies(List<String> explicitGenres, List<String> emotionGenres, boolean isNostalgic) {
+    public List<Movie> filterMovies(List<String> explicitGenres, List<List<String>> mappedEmotions,
+            boolean isNostalgic) {
         List<Movie> explicitGenreResults = null;
         if (explicitGenres != null && !explicitGenres.isEmpty()) {
             explicitGenreResults = searchByGenres(explicitGenres);
         }
 
-        List<Movie> emotionGenreResults = null;
-        if (emotionGenres != null && !emotionGenres.isEmpty()) {
-            emotionGenreResults = searchByGenres(emotionGenres);
+        List<Movie> emotionResults = null;
+        if (mappedEmotions != null && !mappedEmotions.isEmpty()) {
+            for (List<String> emotionGroup : mappedEmotions) {
+                List<Movie> groupResults = searchByGenres(emotionGroup);
+                if (emotionResults == null) {
+                    emotionResults = new ArrayList<>(groupResults);
+                } else {
+                    Set<String> groupIds = groupResults.stream().map(Movie::getImdbId).collect(Collectors.toSet());
+                    emotionResults.removeIf(m -> !groupIds.contains(m.getImdbId()));
+                }
+            }
         }
 
         List<Movie> nostalgicResults = null;
@@ -222,11 +308,11 @@ public class MovieSearchService {
             result = new ArrayList<>(explicitGenreResults);
         }
 
-        if (emotionGenreResults != null) {
+        if (emotionResults != null) {
             if (result == null) {
-                result = new ArrayList<>(emotionGenreResults);
+                result = new ArrayList<>(emotionResults);
             } else {
-                Set<String> emotionIds = emotionGenreResults.stream().map(Movie::getImdbId).collect(Collectors.toSet());
+                Set<String> emotionIds = emotionResults.stream().map(Movie::getImdbId).collect(Collectors.toSet());
                 result.removeIf(m -> !emotionIds.contains(m.getImdbId()));
             }
         }
@@ -240,7 +326,14 @@ public class MovieSearchService {
             }
         }
 
-        return result != null ? result : new ArrayList<>();
+        if (result == null) {
+            return new ArrayList<>();
+        }
+
+        result.sort(java.util.Comparator.comparing(Movie::getImdbRating,
+                java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())));
+
+        return result;
     }
 
     private List<String> extractIdsFromHits(ArrayList<HashMap<String, Object>> hits) {

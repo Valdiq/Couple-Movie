@@ -10,6 +10,7 @@ import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -73,44 +74,60 @@ public class OmdbService {
     public Map<String, Object> searchAllMovies(String title) {
         log.info("Searching ALL pages for title: {}", title);
 
-        // 1. Hybrid Search Check: Try Meilisearch/Local DB first for typo tolerance
-        List<vladyslav.stasyshyn.couple_movie.model.Movie> localResults = movieSearchService.searchMovies(title);
-        if (localResults != null && !localResults.isEmpty()) {
-            log.info("Found {} results in local Meilisearch index for title: {}", localResults.size(), title);
-            List<OmdbMovieSummary> mappedResults = new ArrayList<>();
-            for (var m : localResults) {
+        // 1. Fire local Meilisearch query asynchronously
+        CompletableFuture<List<OmdbMovieSummary>> localSearchFuture = CompletableFuture.supplyAsync(() -> {
+            List<vladyslav.stasyshyn.couple_movie.model.Movie> localMovies = movieSearchService.searchMovies(title);
+            return localMovies.stream().map(m -> {
                 OmdbMovieSummary summary = new OmdbMovieSummary();
                 summary.setImdbID(m.getImdbId());
                 summary.setTitle(m.getTitle());
                 summary.setYear(m.getYear());
                 summary.setType(m.getType());
                 summary.setPoster(m.getPoster());
-                mappedResults.add(summary);
-            }
+                summary.setImdbRating(m.getImdbRating());
+                return summary;
+            }).collect(Collectors.toList());
+        });
 
+        List<OmdbMovieSummary> localResults = localSearchFuture.join();
+        log.info("CRITICAL LOG -> Meilisearch/MySQL localResults extracted pre-merge string size: {}",
+                localResults.size());
+
+        // 2. Check the dynamic threshold to save API calls
+        if (localResults.size() >= 100) {
+            log.info("Local database returned {} matches (>100 threshold). Skipping OMDB API entirely.",
+                    localResults.size());
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("Search", mappedResults);
-            result.put("totalResults", String.valueOf(mappedResults.size()));
+            result.put("Search", localResults);
+            result.put("totalResults", String.valueOf(localResults.size()));
             result.put("Response", "True");
             return result;
         }
 
-        // 2. Fallback to API if not in DB
-        log.info("No local results found. Falling back to OMDB API for title: {}", title);
+        // 3. Fallback to API if DB is too small (e.g. cold start or rare searches)
+        log.info("Local DB returned {} matches. Fetching from OMDB API to enrich backend.", localResults.size());
+
         List<OmdbMovieSummary> allResults = new ArrayList<>();
         int totalResults = 0;
-        int maxPages = 15;
+        int maxPages = 100; // OMDb API limits pagination to 100 pages maximum
 
         for (int page = 1; page <= maxPages; page++) {
             final int currentPage = page;
-            OmdbSearchResponse response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .queryParam("apikey", apiKey)
-                            .queryParam("s", title)
-                            .queryParam("page", currentPage)
-                            .build())
-                    .retrieve()
-                    .body(OmdbSearchResponse.class);
+            OmdbSearchResponse response = null;
+            try {
+                response = restClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .queryParam("apikey", apiKey)
+                                .queryParam("s", title)
+                                .queryParam("page", currentPage)
+                                .build())
+                        .retrieve()
+                        .body(OmdbSearchResponse.class);
+            } catch (Exception e) {
+                log.warn("OMDb API exception on page {}: {}. Likely reached rate limit. Breaking loop.", page,
+                        e.getMessage());
+                break;
+            }
 
             if (response == null || !"True".equals(response.getResponse()) || response.getSearch() == null) {
                 break;
@@ -127,16 +144,37 @@ public class OmdbService {
             allResults.addAll(response.getSearch());
             fetchAndSaveFullDetailsAsync(response.getSearch());
 
-            // Stop if we've fetched all available results
             if (allResults.size() >= totalResults) {
                 break;
             }
         }
 
+        // 4. Merge results (Favoring API results for consistency, deduplicating via
+        // LinkedHashMap)
+        Map<String, OmdbMovieSummary> mergedMap = new LinkedHashMap<>();
+
+        // Add local results first
+        for (OmdbMovieSummary summary : localResults) {
+            mergedMap.put(summary.getImdbID(), summary);
+        }
+
+        // Append API results (this will overwrite any local duplicates with fresh API
+        // versions, but we MUST preserve the local rating so we don't break sorting)
+        for (OmdbMovieSummary summary : allResults) {
+            String id = summary.getImdbID();
+            if (mergedMap.containsKey(id)) {
+                OmdbMovieSummary localEquivalent = mergedMap.get(id);
+                summary.setImdbRating(localEquivalent.getImdbRating());
+            }
+            mergedMap.put(id, summary);
+        }
+
+        List<OmdbMovieSummary> finalMergedList = new ArrayList<>(mergedMap.values());
+
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("Search", allResults);
-        result.put("totalResults", String.valueOf(totalResults));
-        result.put("Response", allResults.isEmpty() ? "False" : "True");
+        result.put("Search", finalMergedList);
+        result.put("totalResults", String.valueOf(finalMergedList.size()));
+        result.put("Response", finalMergedList.isEmpty() ? "False" : "True");
         return result;
     }
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Film, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { User as UserEntity } from "@/entities/User";
@@ -33,6 +32,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       setIsLoadingDetails(true);
       setIsFavorite(false);
       setCoupleMessage(null);
+      setImgError(false);
 
       try {
         const currentUser = await UserEntity.me();

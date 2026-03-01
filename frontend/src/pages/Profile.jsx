@@ -6,7 +6,7 @@ import { UserFavorite } from '@/entities/UserFavorite';
 import { Couple } from '@/entities/Couple';
 import { authService } from '@/services/authService';
 import { Badge } from '@/components/ui/badge';
-import { User, Camera, Heart, Star, LogOut, Check, X, UserPlus, Loader2, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Unlink, Users, Settings, Crown } from 'lucide-react';
+import { User, Camera, Heart, LogOut, Check, X, UserPlus, Loader2, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Unlink, Users, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
