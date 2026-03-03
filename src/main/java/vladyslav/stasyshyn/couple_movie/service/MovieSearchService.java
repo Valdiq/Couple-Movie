@@ -90,6 +90,14 @@ public class MovieSearchService {
                     .genre(omdbMovie.getGenre())
                     .director(omdbMovie.getDirector())
                     .plot(omdbMovie.getPlot())
+                    .runtime(omdbMovie.getRuntime())
+                    .rated(omdbMovie.getRated())
+                    .actors(omdbMovie.getActors())
+                    .language(omdbMovie.getLanguage())
+                    .country(omdbMovie.getCountry())
+                    .awards(omdbMovie.getAwards())
+                    .metascore(omdbMovie.getMetascore())
+                    .imdbVotes(omdbMovie.getImdbVotes())
                     .imdbRating(rating)
                     .build();
             movieRepository.save(movie);

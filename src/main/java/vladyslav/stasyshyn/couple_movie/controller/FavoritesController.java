@@ -44,11 +44,11 @@ public class FavoritesController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addFavorite(@AuthenticationPrincipal User user, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> addFavorite(@AuthenticationPrincipal User user, @RequestBody Map<String, Object> body) {
         if (user == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        String imdbId = body.get("imdb_id");
+        String imdbId = body.get("imdb_id") != null ? String.valueOf(body.get("imdb_id")) : null;
         if (imdbId == null || imdbId.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "imdb_id is required"));
         }
@@ -61,10 +61,10 @@ public class FavoritesController {
         UserFavorite favorite = UserFavorite.builder()
                 .user(user)
                 .imdbId(imdbId)
-                .title(body.getOrDefault("title", ""))
-                .poster(body.getOrDefault("poster", ""))
-                .year(body.getOrDefault("year", ""))
-                .genre(body.getOrDefault("genre", ""))
+                .title(body.containsKey("title") ? String.valueOf(body.get("title")) : "")
+                .poster(body.containsKey("poster") ? String.valueOf(body.get("poster")) : "")
+                .year(body.containsKey("year") ? String.valueOf(body.get("year")) : "")
+                .genre(body.containsKey("genre") ? String.valueOf(body.get("genre")) : "")
                 .build();
 
         userFavoriteRepository.save(favorite);

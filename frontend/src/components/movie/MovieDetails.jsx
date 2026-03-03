@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -14,13 +14,17 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
   const [user, setUser] = useState(null);
   const [fullMovie, setFullMovie] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [addingToCouple, setAddingToCouple] = useState(false);
   const [coupleMessage, setCoupleMessage] = useState(null);
   const [isInCoupleList, setIsInCoupleList] = useState(false);
   const [imgError, setImgError] = useState(false);
+  // Track whether the user has already clicked a couple-list action for this open session
+  // so background API checks don't overwrite optimistic updates
+  const coupleActionTakenRef = useRef(false);
 
   const displayMovie = fullMovie || movie;
-  const movieImdbId = displayMovie?.id || displayMovie?.imdbID || displayMovie?.imdb_id || '';
+  // Derive the IMDB ID from the stable movie prop, NOT displayMovie.
+  // This prevents re-triggering the effect when fullMovie loads.
+  const movieImdbId = movie?.id || movie?.imdbID || movie?.imdb_id || '';
 
   useEffect(() => {
     if (!movie || !isOpen) {
@@ -28,52 +32,75 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       return;
     }
 
-    const fetchAll = async () => {
-      setIsLoadingDetails(true);
-      setIsFavorite(false);
-      setCoupleMessage(null);
-      setImgError(false);
+    // Reset action flag for this new open session
+    coupleActionTakenRef.current = false;
 
+    // Fast init from the passed down movie object (especially useful in lists)
+    setIsFavorite(movie.is_favorite === true);
+    setIsInCoupleList(movie.in_couple_list === true);
+    setCoupleMessage(null);
+    setImgError(false);
+
+    const imdbId = movie?.id || movie?.imdbID || movie?.imdb_id || '';
+    let cancelled = false;
+
+    const fetchAll = async () => {
       try {
         const currentUser = await UserEntity.me();
+        if (cancelled) return;
         setUser(currentUser);
-        if (currentUser && movieImdbId) {
-          const fav = await UserFavorite.check(movieImdbId);
-          setIsFavorite(!!fav);
 
-          if (currentUser.partner_id) {
-            const coupleCheck = await coupleMovieService.check(movieImdbId);
-            setIsInCoupleList(coupleCheck.in_list);
-          } else {
-            setIsInCoupleList(false);
+        if (currentUser && imdbId) {
+          const checkFav = UserFavorite.check(imdbId);
+          const checkCouple = currentUser.partner_id
+            ? coupleMovieService.check(imdbId)
+            : Promise.resolve({ in_list: false });
+
+          const [favStatus, coupleStatus] = await Promise.all([checkFav, checkCouple]);
+
+          if (cancelled) return;
+          setIsFavorite(!!favStatus);
+          // Only update couple list state from API if the user hasn't already
+          // clicked Add to Couple List (which would have set the optimistic state)
+          if (!coupleActionTakenRef.current) {
+            setIsInCoupleList(coupleStatus.in_list);
+            // Also sync back to the movie object so reopening is correct
+            if (movie) movie.in_couple_list = coupleStatus.in_list;
           }
         }
       } catch (error) {
-        setUser(null);
-        setIsInCoupleList(false);
+        if (!cancelled) setUser(null);
       }
+    };
 
-      if (movieImdbId) {
+    const fetchDetails = async () => {
+      if (imdbId) {
+        setIsLoadingDetails(true);
         try {
-          const fullDetails = await Movie.getDetails(movieImdbId);
-          if (fullDetails) setFullMovie(fullDetails);
+          const fullDetails = await Movie.getDetails(imdbId);
+          if (!cancelled && fullDetails) setFullMovie(fullDetails);
         } catch (e) { }
+        if (!cancelled) setIsLoadingDetails(false);
       }
-      setIsLoadingDetails(false);
     };
 
     fetchAll();
+    fetchDetails();
+
+    return () => { cancelled = true; };
   }, [movie, isOpen]);
 
   const handleFavorite = async () => {
     if (!user) { window.location.href = '/login'; return; }
     if (!movieImdbId) return;
 
-    setIsLoading(true);
+    const previousState = isFavorite;
+    // Optimistic UI update
+    setIsFavorite(!isFavorite);
+
     try {
-      if (isFavorite) {
+      if (previousState) {
         await UserFavorite.remove(movieImdbId);
-        setIsFavorite(false);
       } else {
         await UserFavorite.add({
           imdb_id: movieImdbId,
@@ -82,16 +109,26 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           year: displayMovie.year || '',
           genre: displayMovie.genre || ''
         });
-        setIsFavorite(true);
       }
-    } catch (error) { }
-    setIsLoading(false);
+      // Update the local movie object to cache the value so closing and reopening keeps it
+      if (movie) {
+        movie.is_favorite = !previousState;
+      }
+    } catch (error) {
+      // Revert on error
+      setIsFavorite(previousState);
+    }
   };
 
   const handleAddToCouple = async () => {
     if (!user) return;
-    setAddingToCouple(true);
+
+    // Mark that the user has taken an action so background checks don't revert us
+    coupleActionTakenRef.current = true;
+    // Optimistic UI update
+    setIsInCoupleList(true);
     setCoupleMessage(null);
+
     try {
       await coupleMovieService.add({
         imdb_id: movieImdbId,
@@ -100,12 +137,17 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
         year: displayMovie.year || '',
         genre: displayMovie.genre || ''
       });
-      setIsInCoupleList(true);
       setCoupleMessage({ type: 'success', text: 'Added to Couple Watchlist!' });
+
+      // Update local movie object so reopening the modal keeps the correct status
+      if (movie) {
+        movie.in_couple_list = true;
+      }
     } catch (error) {
+      coupleActionTakenRef.current = false;
+      setIsInCoupleList(false);
       setCoupleMessage({ type: 'error', text: 'Failed to add to couple list' });
     }
-    setAddingToCouple(false);
   };
 
   if (!movie) return null;
@@ -219,7 +261,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                         </div>
                       )}
                       {displayMovie.metascore && displayMovie.metascore !== 'N/A' && (
-                        <Badge className="bg-green-900/50 text-green-300 border-green-700/50">
+                        <Badge variant="secondary" className="bg-green-900/50 text-green-300 border-green-700/50">
                           Metascore: {displayMovie.metascore}
                         </Badge>
                       )}
@@ -248,12 +290,10 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 {user && (
                   <button
                     onClick={handleAddToCouple}
-                    disabled={addingToCouple || isInCoupleList}
+                    disabled={isInCoupleList}
                     className="flex-1 min-w-[200px] flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium hover:bg-primary/10 hover:border-primary/50 text-foreground disabled:opacity-50"
                   >
-                    {addingToCouple ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : isInCoupleList ? (
+                    {isInCoupleList ? (
                       <Users className="w-4 h-4 mr-2 text-primary" />
                     ) : (
                       <PlusCircle className="w-4 h-4 mr-2 text-primary" />

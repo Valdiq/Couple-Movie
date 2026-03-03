@@ -94,7 +94,7 @@ export const Movie = {
             const results = await movieService.searchByGenres(genres);
             if (Array.isArray(results)) {
                 return results.map(m => ({
-                    id: m.imdbID,
+                    id: m.imdbID || m.imdbId,
                     title: m.title,
                     poster: m.poster,
                     year: m.year,
@@ -116,7 +116,7 @@ export const Movie = {
             const results = await movieService.getByEmotion(emotion);
             if (Array.isArray(results)) {
                 return results.map(m => ({
-                    id: m.imdbID,
+                    id: m.imdbID || m.imdbId,
                     title: m.title,
                     poster: m.poster,
                     year: m.year,
@@ -138,7 +138,7 @@ export const Movie = {
             const results = await movieService.getByEmotions(emotions);
             if (Array.isArray(results)) {
                 return results.map(m => ({
-                    id: m.imdbID,
+                    id: m.imdbID || m.imdbId,
                     title: m.title,
                     poster: m.poster,
                     year: m.year,
@@ -160,7 +160,7 @@ export const Movie = {
             const results = await movieService.filter(genres, emotions);
             if (Array.isArray(results)) {
                 return results.map(m => ({
-                    id: m.imdbID,
+                    id: m.imdbID || m.imdbId,
                     title: m.title,
                     poster: m.poster,
                     year: m.year,

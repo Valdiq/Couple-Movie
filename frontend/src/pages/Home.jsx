@@ -72,13 +72,9 @@ export default function Home() {
     setCustomVibe("");
   };
 
-  const handleMovieSelect = async (movie) => {
+  const handleMovieSelect = (movie) => {
     setSelectedMovie(movie);
     setIsDetailsOpen(true);
-    if (movie.id) {
-      const fullDetails = await Movie.getDetails(movie.id);
-      if (fullDetails) setSelectedMovie(fullDetails);
-    }
   };
 
   return (

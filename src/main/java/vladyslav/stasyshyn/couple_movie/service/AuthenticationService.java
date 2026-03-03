@@ -101,10 +101,6 @@ public class AuthenticationService {
                         throw new RuntimeException("User is already verified");
                 }
 
-                // Optional: delete old verification tokens to prevent clutter
-                // authTokenRepository.deleteByUserIdAndType(user.getId(),
-                // AuthToken.TokenType.VERIFY_EMAIL);
-
                 String verifyToken = java.util.UUID.randomUUID().toString();
                 AuthToken authToken = AuthToken.builder()
                                 .token(verifyToken)

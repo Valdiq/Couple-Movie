@@ -28,7 +28,7 @@ public class CoupleMovieController {
 
     @PostMapping
     public ResponseEntity<?> addMovie(@AuthenticationPrincipal User user,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, Object> body) {
         try {
             return ResponseEntity.ok(coupleMovieService.addMovie(user, body));
         } catch (IllegalStateException | IllegalArgumentException e) {

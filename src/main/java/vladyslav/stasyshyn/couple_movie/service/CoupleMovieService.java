@@ -68,9 +68,9 @@ public class CoupleMovieService {
     }
 
     @Transactional
-    public Map<String, Object> addMovie(User user, Map<String, String> movieData) {
+    public Map<String, Object> addMovie(User user, Map<String, Object> movieData) {
         String coupleKey = getCoupleKey(user);
-        String imdbId = movieData.get("imdb_id");
+        String imdbId = movieData.get("imdb_id") != null ? String.valueOf(movieData.get("imdb_id")) : null;
 
         if (imdbId == null || imdbId.isBlank()) {
             throw new IllegalArgumentException("imdb_id is required");
@@ -93,10 +93,10 @@ public class CoupleMovieService {
             movie = CoupleMovie.builder()
                     .coupleKey(coupleKey)
                     .imdbId(imdbId)
-                    .title(movieData.getOrDefault("title", ""))
-                    .poster(movieData.getOrDefault("poster", ""))
-                    .year(movieData.getOrDefault("year", ""))
-                    .genre(movieData.getOrDefault("genre", ""))
+                    .title(movieData.containsKey("title") ? String.valueOf(movieData.get("title")) : "")
+                    .poster(movieData.containsKey("poster") ? String.valueOf(movieData.get("poster")) : "")
+                    .year(movieData.containsKey("year") ? String.valueOf(movieData.get("year")) : "")
+                    .genre(movieData.containsKey("genre") ? String.valueOf(movieData.get("genre")) : "")
                     .addedByUserId(user.getId())
                     .userYouAdded(true)
                     .partnerAdded(false)

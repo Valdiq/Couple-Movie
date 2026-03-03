@@ -36,6 +36,10 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String firstName = oAuth2User.getAttribute("given_name");
         String lastName = oAuth2User.getAttribute("family_name");
 
+        String defaultUsername = (lastName != null && !lastName.isEmpty()) ? lastName.toLowerCase()
+                : (firstName != null && !firstName.isEmpty()) ? firstName.toLowerCase()
+                        : (email != null ? email.split("@")[0] : "user");
+
         Optional<User> userOptional = userRepository.findByEmail(email);
         User user;
         if (userOptional.isPresent()) {
@@ -49,6 +53,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .email(email)
                     .firstName(firstName)
                     .lastName(lastName)
+                    .displayUsername(defaultUsername)
                     .googleId(googleId)
                     .role(Role.USER)
                     .build();

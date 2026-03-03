@@ -127,19 +127,24 @@ export default function CouplePage() {
   };
 
   const handleUpdateWatchStatus = async (imdbId, newStatus) => {
+    // Optimistic UI update
+    setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, watch_status: newStatus } : m));
     try {
       await coupleMovieService.updateStatus(imdbId, { watch_status: newStatus });
-      setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, watch_status: newStatus } : m));
-      loadSharedMovies();
-    } catch (e) { }
+    } catch (e) {
+      // Revert could go here
+    }
   };
 
   const handleCoupleRate = async (imdbId, rating) => {
+    // Optimistic UI Update
+    setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, your_rating: rating, watch_status: 'WATCHED' } : m));
     try {
       await coupleMovieService.rate(imdbId, rating);
-      setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, your_rating: rating, watch_status: 'WATCHED' } : m));
-      loadSharedMovies();
-    } catch (e) { }
+      // Fetch stats quietly down the line if needed without triggering the full screen loader
+    } catch (e) {
+      // Revert could go here
+    }
   };
 
   const handleMovieSelect = (movie) => {

@@ -80,21 +80,27 @@ export default function Favorites() {
 
   const toggleWatchStatus = async (fav) => {
     const newStatus = fav.watch_status === 'WATCHED' ? 'PLAN_TO_WATCH' : 'WATCHED';
+    // Optimistic UI
+    setFavorites(prev => prev.map(f =>
+      f.imdb_id === fav.imdb_id ? { ...f, watch_status: newStatus, user_rating: newStatus === 'PLAN_TO_WATCH' ? null : f.user_rating } : f
+    ));
     try {
       await UserFavorite.updateStatus(fav.imdb_id, { watch_status: newStatus });
-      setFavorites(prev => prev.map(f =>
-        f.imdb_id === fav.imdb_id ? { ...f, watch_status: newStatus, user_rating: newStatus === 'PLAN_TO_WATCH' ? null : f.user_rating } : f
-      ));
-    } catch (error) { }
+    } catch (error) {
+      // Revert could go here
+    }
   };
 
   const handleRating = async (fav, rating) => {
+    // Optimistic UI Update
+    setFavorites(prev => prev.map(f =>
+      f.imdb_id === fav.imdb_id ? { ...f, user_rating: rating, watch_status: 'WATCHED' } : f
+    ));
     try {
       await UserFavorite.updateStatus(fav.imdb_id, { user_rating: rating, watch_status: 'WATCHED' });
-      setFavorites(prev => prev.map(f =>
-        f.imdb_id === fav.imdb_id ? { ...f, user_rating: rating, watch_status: 'WATCHED' } : f
-      ));
-    } catch (error) { }
+    } catch (error) {
+      // Revert could go here
+    }
   };
 
   const handleMovieSelect = (fav) => {
@@ -225,7 +231,7 @@ export default function Favorites() {
             </h3>
             {activeTab === 'all' && (
               <Link to={createPageUrl("Search")}>
-                <Button className="mt-4 bg-gradient-to-r from-primary to-accent text-primary-foreground">Discover Movies</Button>
+                <button className="mt-4 inline-flex items-center justify-center whitespace-nowrap rounded-xl bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-50">Discover Movies</button>
               </Link>
             )}
           </motion.div>

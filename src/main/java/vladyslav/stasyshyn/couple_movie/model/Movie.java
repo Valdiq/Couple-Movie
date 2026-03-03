@@ -30,6 +30,21 @@ public class Movie {
     @Column(columnDefinition = "TEXT")
     private String plot;
 
+    private String runtime;
+    private String rated;
+
+    @Column(columnDefinition = "TEXT")
+    private String actors;
+
+    private String language;
+    private String country;
+
+    @Column(columnDefinition = "TEXT")
+    private String awards;
+
+    private String metascore;
+    private String imdbVotes;
+
     @Column(name = "imdb_rating")
     private Double imdbRating;
 }

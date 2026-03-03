@@ -96,18 +96,8 @@ public class UserMovieService {
     }
 
     private void ensureMovieCached(String imdbId) {
-        // We might want to ensure the movie is in our system (ES)
-        // If not, we might trigger a fetch from OmdbService, but generating a circular
-        // dependency logic is risky.
-        // Ideally, the UI already called getMovieDetails which caches it.
-        // Or we inject OmdbService lazily or use an event.
-        // For simplicity, we assume the movie is likely already searched/viewed.
-        // We can check ES existence via MovieSearchService.
         if (movieSearchService.getMovieById(imdbId).isEmpty()) {
-            // In a real app we would fetch and cache here.
-            // Since OmdbService depends on MovieSearchService, we can't easily inject
-            // OmdbService here without cycle.
-            // We'll leave it as a potential enhancement or assume UI flow covers it.
+            // Placeholder for lazy fetching if required
         }
     }
 }
