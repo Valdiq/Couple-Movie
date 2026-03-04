@@ -47,7 +47,7 @@ public class MovieSearchService {
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void syncDatabaseToMeilisearch() {
         log.info(
-                "Application ready. Syncing all MySQL movies to Meilisearch to ensure index integrity and sorting compatibility...");
+                "Application ready. Syncing all PostgreSQL movies to Meilisearch to ensure index integrity and sorting compatibility...");
         try {
             List<Movie> allMovies = movieRepository.findAll();
             if (allMovies.isEmpty()) {

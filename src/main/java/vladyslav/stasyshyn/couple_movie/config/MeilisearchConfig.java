@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MeilisearchConfig {
 
-    @Value("${app.meilisearch.url:http://localhost:7700}")
+    @Value("${app.meilisearch.url}")
     private String url;
 
-    @Value("${app.meilisearch.api-key:masterKey}")
+    @Value("${app.meilisearch.api-key}")
     private String apiKey;
 
     @Bean

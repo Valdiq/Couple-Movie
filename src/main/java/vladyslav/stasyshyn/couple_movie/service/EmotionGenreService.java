@@ -77,7 +77,7 @@ public class EmotionGenreService {
 
             log.info("Seeded {} emotion-genre mappings", mappings.size());
         } catch (Exception e) {
-            log.warn("Could not seed EmotionGenreMap (MongoDB may not be available): {}", e.getMessage());
+            log.warn("Could not seed EmotionGenreMap (PostgreSQL may not be available): {}", e.getMessage());
         }
     }
 
@@ -86,7 +86,7 @@ public class EmotionGenreService {
             Optional<EmotionGenreMap> mapping = repository.findByEmotion(emotion.toLowerCase());
             return mapping.map(EmotionGenreMap::getGenres).orElse(Collections.emptyList());
         } catch (Exception e) {
-            log.warn("Could not query MongoDB for emotion '{}': {}", emotion, e.getMessage());
+            log.warn("Could not query PostgreSQL for emotion '{}': {}", emotion, e.getMessage());
             return Collections.emptyList();
         }
     }

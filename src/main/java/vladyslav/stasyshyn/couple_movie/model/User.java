@@ -44,19 +44,19 @@ public class User implements UserDetails {
     @Column(name = "google_id")
     private String googleId;
 
-    @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @CreationTimestamp
     @Column(name = "created_date", updatable = false)
     private LocalDateTime createdDate;
 
-    // Couple functionality
     @Column(name = "partner_id")
     private Long partnerId;
 
-    @Column(name = "is_verified", nullable = false, columnDefinition = "boolean default false")
-    private boolean isVerified;
+    @Column(name = "is_verified", nullable = false)
+    @Builder.Default
+    private boolean isVerified = false;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

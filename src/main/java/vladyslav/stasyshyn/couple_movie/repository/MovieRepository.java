@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface MovieRepository extends JpaRepository<Movie, String> {
 
-    @Query(value = "SELECT * FROM movies ORDER BY RAND() LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM movies ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<Movie> findRandomMovie();
 
 }

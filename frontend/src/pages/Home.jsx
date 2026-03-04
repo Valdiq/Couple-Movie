@@ -58,7 +58,15 @@ export default function Home() {
 
   const getRandomMovie = async () => {
     setIsLoading(true);
-    const randomMovie = await Movie.getRandom();
+    let randomMovie;
+
+    if (selectedEmotion && movies.length > 0) {
+      const randomIndex = Math.floor(Math.random() * movies.length);
+      randomMovie = movies[randomIndex];
+    } else {
+      randomMovie = await Movie.getRandom();
+    }
+
     if (randomMovie) {
       setSelectedMovie(randomMovie);
       setIsDetailsOpen(true);

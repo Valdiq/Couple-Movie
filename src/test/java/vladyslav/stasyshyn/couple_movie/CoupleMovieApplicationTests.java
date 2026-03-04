@@ -12,7 +12,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
@@ -22,26 +22,53 @@ import vladyslav.stasyshyn.couple_movie.dto.RegisterRequest;
 import vladyslav.stasyshyn.couple_movie.model.MovieStatus;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import vladyslav.stasyshyn.couple_movie.service.EmailService;
+import vladyslav.stasyshyn.couple_movie.service.OmdbService;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+@SpringBootTest(properties = {
+                "DATASOURCE_URL=jdbc:postgresql://localhost:5433/couple_movie_test",
+                "DATASOURCE_USERNAME=test",
+                "DATASOURCE_PASSWORD=test",
+                "MAIL_USERNAME=test",
+                "MAIL_PASSWORD=test",
+                "GOOGLE_CLIENT_ID=test",
+                "GOOGLE_CLIENT_SECRET=test",
+                "MEILISEARCH_URL=http://localhost:7700",
+                "MEILISEARCH_API_KEY=testApiKey",
+                "JWT_SECRET=1234567890123456789012345678901212345678901234567890123456789012",
+                "JWT_EXPIRATION_MS=604800000",
+                "OMDB_API_KEY=testApiKey",
+                "OMDB_URL=http://www.omdbapi.com/",
+                "TMDB_API_KEY=testApiKey",
+                "AI_API_KEY=testApiKey"
+})
 @Testcontainers
 @AutoConfigureMockMvc
 class CoupleMovieApplicationTests {
 
+        @MockBean
+        private OmdbService omdbService;
+
+        @MockBean
+        private EmailService emailService;
+
         @Container
         @SuppressWarnings("resource")
-        static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+        static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
                         .withDatabaseName("couple_movie_test")
                         .withUsername("test")
                         .withPassword("test");
 
         @DynamicPropertySource
         static void configureProperties(DynamicPropertyRegistry registry) {
-                registry.add("spring.datasource.url", mysql::getJdbcUrl);
-                registry.add("spring.datasource.username", mysql::getUsername);
-                registry.add("spring.datasource.password", mysql::getPassword);
+                registry.add("spring.datasource.url", postgres::getJdbcUrl);
+                registry.add("spring.datasource.username", postgres::getUsername);
+                registry.add("spring.datasource.password", postgres::getPassword);
         }
 
         @Autowired
@@ -52,7 +79,7 @@ class CoupleMovieApplicationTests {
 
         @Test
         void contextLoads() {
-                Assertions.assertTrue(mysql.isRunning());
+                Assertions.assertTrue(postgres.isRunning());
         }
 
         @Test
