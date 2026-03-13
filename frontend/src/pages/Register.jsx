@@ -102,7 +102,7 @@ const Register = () => {
                             <div className="space-y-2">
                                 <Label htmlFor="firstname" className={errors.firstname ? "text-destructive" : ""}>First Name</Label>
                                 <Input id="firstname" placeholder="John" value={formData.firstname}
-                                    onChange={handleChange}
+                                    onChange={handleChange} autoComplete="given-name"
                                     className={`bg-background text-foreground transition-colors ${errors.firstname ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
                                 {errors.firstname && (
                                     <p className="flex items-center text-sm font-medium text-destructive mt-1">
@@ -114,7 +114,7 @@ const Register = () => {
                             <div className="space-y-2">
                                 <Label htmlFor="lastname" className={errors.lastname ? "text-destructive" : ""}>Last Name</Label>
                                 <Input id="lastname" placeholder="Doe" value={formData.lastname}
-                                    onChange={handleChange}
+                                    onChange={handleChange} autoComplete="family-name"
                                     className={`bg-background text-foreground transition-colors ${errors.lastname ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
                                 {errors.lastname && (
                                     <p className="flex items-center text-sm font-medium text-destructive mt-1">
@@ -127,7 +127,7 @@ const Register = () => {
                         <div className="space-y-2">
                             <Label htmlFor="username" className={errors.username ? "text-destructive" : ""}>Username</Label>
                             <Input id="username" placeholder="johndoe" value={formData.username}
-                                onChange={handleChange}
+                                onChange={handleChange} autoComplete="username"
                                 className={`bg-background text-foreground transition-colors ${errors.username ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
                             {errors.username ? (
                                 <p className="flex items-center text-sm font-medium text-destructive mt-1">
@@ -141,7 +141,7 @@ const Register = () => {
                         <div className="space-y-2">
                             <Label htmlFor="email" className={errors.email ? "text-destructive" : ""}>Email</Label>
                             <Input id="email" type="email" placeholder="m@example.com" value={formData.email}
-                                onChange={handleChange}
+                                onChange={handleChange} autoComplete="email"
                                 className={`bg-background text-foreground transition-colors ${errors.email ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
                             {errors.email && (
                                 <p className="flex items-center text-sm font-medium text-destructive mt-1">
@@ -153,7 +153,7 @@ const Register = () => {
                         <div className="space-y-2">
                             <Label htmlFor="password" className={errors.password ? "text-destructive" : ""}>Password</Label>
                             <Input id="password" type="password" value={formData.password}
-                                onChange={handleChange}
+                                onChange={handleChange} autoComplete="new-password"
                                 className={`bg-background text-foreground transition-colors ${errors.password ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`} />
                             {errors.password && (
                                 <p className="flex items-center text-sm font-medium text-destructive mt-1">

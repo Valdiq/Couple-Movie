@@ -37,7 +37,7 @@ export const coupleMovieService = {
             const response = await api.get(`/couple/movies/check/${imdbId}`);
             return response.data;
         } catch (e) {
-            return { in_list: false };
+            return false;
         }
     }
 };

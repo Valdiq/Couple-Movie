@@ -9,12 +9,12 @@ export const movieService = {
         const response = await api.get(`/movies/search-all`, { params: { title } });
         return response.data;
     },
-    advancedSearch: async (query) => {
-        const response = await api.get(`/movies/advanced-search`, { params: { query } });
+    advancedSearch: async (query, page = 0, size = 15) => {
+        const response = await api.get(`/movies/advanced-search`, { params: { query, page, size } });
         return response.data;
     },
-    searchByGenres: async (genres) => {
-        const response = await api.get(`/movies/by-genres`, { params: { genres: genres.join(',') } });
+    searchByGenres: async (genres, page = 0, size = 15) => {
+        const response = await api.get(`/movies/by-genres`, { params: { genres: genres.join(','), page, size } });
         return response.data;
     },
     getByEmotion: async (emotion) => {
@@ -25,10 +25,13 @@ export const movieService = {
         const response = await api.get(`/movies/by-emotions`, { params: { emotions: emotions.join(',') } });
         return response.data;
     },
-    filter: async (genres, emotions) => {
+    filter: async (genres, emotions, page = 0, size = 15, awarded = false) => {
         const params = {};
         if (genres && genres.length > 0) params.genres = genres.join(',');
         if (emotions && emotions.length > 0) params.emotions = emotions.join(',');
+        params.page = page;
+        params.size = size;
+        params.awarded = awarded;
         const response = await api.get(`/movies/filter`, { params });
         return response.data;
     },

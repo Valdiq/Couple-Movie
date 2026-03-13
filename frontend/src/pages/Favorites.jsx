@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trash2, Star, Loader2, Eye, Film, BookmarkCheck } from "lucide-react";
+import { Heart, Trash2, Star, Loader2, Eye, Film, BookmarkCheck, Award } from "lucide-react";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { User } from "@/entities/User";
 import MovieDetails from "../components/movie/MovieDetails";
@@ -9,7 +9,6 @@ import { createPageUrl } from '@/utils';
 import ChatWidget from "../components/chat/ChatWidget";
 import { useAuth } from '@/lib/AuthContext';
 import Pagination from "../components/ui/Pagination";
-import { Button } from "@/components/ui/button";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -74,18 +73,18 @@ export default function Favorites() {
   };
 
   const removeFavorite = async (imdbId) => {
-    try { await UserFavorite.remove(imdbId); setFavorites(prev => prev.filter(fav => fav.imdb_id !== imdbId)); }
+    try { await UserFavorite.remove(imdbId); setFavorites(prev => prev.filter(fav => fav.imdbId !== imdbId)); }
     catch (error) { }
   };
 
   const toggleWatchStatus = async (fav) => {
-    const newStatus = fav.watch_status === 'WATCHED' ? 'PLAN_TO_WATCH' : 'WATCHED';
+    const newStatus = fav.watchStatus === 'WATCHED' ? 'PLAN_TO_WATCH' : 'WATCHED';
     // Optimistic UI
     setFavorites(prev => prev.map(f =>
-      f.imdb_id === fav.imdb_id ? { ...f, watch_status: newStatus, user_rating: newStatus === 'PLAN_TO_WATCH' ? null : f.user_rating } : f
+      f.imdbId === fav.imdbId ? { ...f, watchStatus: newStatus, userRating: newStatus === 'PLAN_TO_WATCH' ? null : f.userRating } : f
     ));
     try {
-      await UserFavorite.updateStatus(fav.imdb_id, { watch_status: newStatus });
+      await UserFavorite.updateStatus(fav.imdbId, { watchStatus: newStatus });
     } catch (error) {
       // Revert could go here
     }
@@ -94,17 +93,17 @@ export default function Favorites() {
   const handleRating = async (fav, rating) => {
     // Optimistic UI Update
     setFavorites(prev => prev.map(f =>
-      f.imdb_id === fav.imdb_id ? { ...f, user_rating: rating, watch_status: 'WATCHED' } : f
+      f.imdbId === fav.imdbId ? { ...f, userRating: rating, watchStatus: 'WATCHED' } : f
     ));
     try {
-      await UserFavorite.updateStatus(fav.imdb_id, { user_rating: rating, watch_status: 'WATCHED' });
+      await UserFavorite.updateStatus(fav.imdbId, { userRating: rating, watchStatus: 'WATCHED' });
     } catch (error) {
       // Revert could go here
     }
   };
 
   const handleMovieSelect = (fav) => {
-    setSelectedMovie({ imdbID: fav.imdb_id, id: fav.imdb_id, title: fav.title, poster: fav.poster, year: fav.year, genre: fav.genre });
+    setSelectedMovie({ imdbID: fav.imdbId, id: fav.imdbId, title: fav.title, poster: fav.poster, year: fav.year, genre: fav.genre });
     setIsDetailsOpen(true);
   };
 
@@ -125,11 +124,11 @@ export default function Favorites() {
   }
 
   const filteredFavorites = activeTab === 'all' ? favorites
-    : activeTab === 'watched' ? favorites.filter(f => f.watch_status === 'WATCHED')
-      : favorites.filter(f => f.watch_status !== 'WATCHED');
+    : activeTab === 'watched' ? favorites.filter(f => f.watchStatus === 'WATCHED')
+      : favorites.filter(f => f.watchStatus !== 'WATCHED');
 
-  const watchedCount = favorites.filter(f => f.watch_status === 'WATCHED').length;
-  const planCount = favorites.filter(f => f.watch_status !== 'WATCHED').length;
+  const watchedCount = favorites.filter(f => f.watchStatus === 'WATCHED').length;
+  const planCount = favorites.filter(f => f.watchStatus !== 'WATCHED').length;
   const totalPages = Math.ceil(filteredFavorites.length / ITEMS_PER_PAGE);
   const paginatedFavorites = filteredFavorites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
@@ -175,10 +174,10 @@ export default function Favorites() {
 
         {/* Cards Grid */}
         {filteredFavorites.length > 0 && (
-          <AnimatePresence>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {paginatedFavorites.map((fav, index) => (
-                <motion.div key={fav.id || fav.imdb_id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
+                <motion.div key={fav.id || fav.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
                   <div className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30" onClick={() => handleMovieSelect(fav)}>
                     <div className="relative aspect-[2/3] overflow-hidden">
                       {fav.poster && fav.poster !== 'N/A' && fav.poster !== '' ? (
@@ -187,30 +186,51 @@ export default function Favorites() {
                         <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-16 w-16 text-muted-foreground" /></div>
                       )}
                       <button className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
-                        onClick={(e) => { e.stopPropagation(); removeFavorite(fav.imdb_id); }}>
+                        onClick={(e) => { e.stopPropagation(); removeFavorite(fav.imdbId); }}>
                         <Trash2 className="h-4 w-4" />
                       </button>
+
+                      {fav.imdbRating && fav.imdbRating !== "N/A" && (
+                        <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {fav.imdbRating}
+                        </div>
+                      )}
+                      {fav.awards && fav.awards !== "N/A" && (
+                        <div className="absolute bottom-2 right-2">
+                          {/\b(win|wins|won)\b/i.test(fav.awards) ? (
+                            <div title={fav.awards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                              <Award className="h-4 w-4 text-yellow-500 fill-yellow-500/20" />
+                            </div>
+                          ) : /\b(nomination|nominated|nominations)\b/i.test(fav.awards) ? (
+                            <div title={fav.awards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                              <Award className="h-4 w-4 text-slate-300 fill-slate-300/20" />
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="space-y-2 p-3">
+                    <div className="space-y-2 p-3 relative">
+                      {/* Rating and Awards overlays (absolutely positioned within relative container so it visually enters the poster if padding allows, or we place it directly in the poster container) */}
                       <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{fav.title || 'Untitled'}</h3>
                       {fav.year && <p className="text-xs text-muted-foreground">{fav.year}</p>}
 
                       <button
-                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${fav.watch_status === 'WATCHED'
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${fav.watchStatus === 'WATCHED'
                           ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
                           : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
                           }`}
                         onClick={(e) => { e.stopPropagation(); toggleWatchStatus(fav); }}
-                        title={fav.watch_status === 'WATCHED' ? 'Click to move back to Plan to Watch' : 'Click to mark as Watched'}
+                        title={fav.watchStatus === 'WATCHED' ? 'Click to move back to Plan to Watch' : 'Click to mark as Watched'}
                       >
-                        {fav.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
+                        {fav.watchStatus === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
                       </button>
 
-                      {fav.watch_status === 'WATCHED' && (
+                      {fav.watchStatus === 'WATCHED' && (
                         <div onClick={(e) => e.stopPropagation()} className="pt-1">
                           <p className="mb-1 text-[10px] text-muted-foreground">Your Rating:</p>
-                          <StarRating rating={fav.user_rating} onChange={(r) => handleRating(fav, r)} disabled={false} size="sm" />
+                          <StarRating rating={fav.userRating} onChange={(r) => handleRating(fav, r)} disabled={false} size="sm" />
                         </div>
                       )}
                     </div>

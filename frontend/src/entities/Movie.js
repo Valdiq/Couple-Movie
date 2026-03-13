@@ -18,11 +18,9 @@ const mapOmdbToFrontend = (m) => ({
     language: m.Language || m.language,
     country: m.Country || m.country,
     awards: m.Awards || m.awards,
-    rated: m.Rated || m.rated,
     runtime: m.Runtime || m.runtime,
     imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
     imdb_votes: m.imdbVotes || m.imdb_votes || m.imdbvotes,
-    metascore: m.Metascore || m.metascore,
 });
 
 export const Movie = {
@@ -40,12 +38,25 @@ export const Movie = {
                     poster: m.Poster || m.poster,
                     year: m.Year || m.year,
                     type: m.Type || m.type,
+                    genre: m.Genre || m.genre,
+                    awards: m.Awards || m.awards,
+                    imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
                 }));
             }
             return [];
         } catch (e) {
             console.error("Failed to search movies", e);
             return [];
+        }
+    },
+    advancedSearch: async (query, page = 0, size = 15) => {
+        try {
+            const response = await movieService.advancedSearch(query, page, size);
+            const movies = (response.movies || []).map(mapOmdbToFrontend);
+            return { movies, totalHits: response.totalHits || 0, page: response.page, size: response.size };
+        } catch (e) {
+            console.error("Failed to advanced search movies", e);
+            return { movies: [], totalHits: 0, page, size };
         }
     },
     autocomplete: async (query, limit = 5) => {
@@ -59,7 +70,8 @@ export const Movie = {
                     year: m.year,
                     type: m.type,
                     genre: m.genre,
-                    imdb_rating: m.imdbRating || m.imdb_rating,
+                    awards: m.Awards || m.awards,
+                    imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
                 }));
             }
             return [];
@@ -89,26 +101,14 @@ export const Movie = {
             return null;
         }
     },
-    searchByGenres: async (genres) => {
+    searchByGenres: async (genres, page = 0, size = 15) => {
         try {
-            const results = await movieService.searchByGenres(genres);
-            if (Array.isArray(results)) {
-                return results.map(m => ({
-                    id: m.imdbID || m.imdbId,
-                    title: m.title,
-                    poster: m.poster,
-                    year: m.year,
-                    type: m.type,
-                    genre: m.genre,
-                    director: m.director,
-                    plot: m.plot,
-                    imdb_rating: m.imdbRating,
-                }));
-            }
-            return [];
+            const response = await movieService.searchByGenres(genres, page, size);
+            const movies = (response.movies || []).map(mapOmdbToFrontend);
+            return { movies, totalHits: response.totalHits || 0, page: response.page, size: response.size };
         } catch (e) {
             console.error("Failed to search by genres", e);
-            return [];
+            return { movies: [], totalHits: 0, page, size };
         }
     },
     getByEmotion: async (emotion) => {
@@ -155,26 +155,14 @@ export const Movie = {
             return [];
         }
     },
-    filter: async (genres, emotions) => {
+    filter: async (genres, emotions, page = 0, size = 15, awarded = false) => {
         try {
-            const results = await movieService.filter(genres, emotions);
-            if (Array.isArray(results)) {
-                return results.map(m => ({
-                    id: m.imdbID || m.imdbId,
-                    title: m.title,
-                    poster: m.poster,
-                    year: m.year,
-                    type: m.type,
-                    genre: m.genre,
-                    director: m.director,
-                    plot: m.plot,
-                    imdb_rating: m.imdbRating,
-                }));
-            }
-            return [];
+            const response = await movieService.filter(genres, emotions, page, size, awarded);
+            const movies = (response.movies || []).map(mapOmdbToFrontend);
+            return { movies, totalHits: response.totalHits || 0, page: response.page, size: response.size };
         } catch (e) {
             console.error("Failed to filter movies", e);
-            return [];
+            return { movies: [], totalHits: 0, page, size };
         }
     },
     get: async (id) => {

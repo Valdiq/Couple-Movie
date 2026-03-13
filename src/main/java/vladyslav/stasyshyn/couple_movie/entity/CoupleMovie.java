@@ -1,4 +1,4 @@
-package vladyslav.stasyshyn.couple_movie.model;
+package vladyslav.stasyshyn.couple_movie.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
+import vladyslav.stasyshyn.couple_movie.model.WatchStatus;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,6 +21,7 @@ public class CoupleMovie {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     /**
@@ -48,9 +49,10 @@ public class CoupleMovie {
     @Column(name = "added_by_user_id")
     private Long addedByUserId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "watch_status")
     @Builder.Default
-    private String watchStatus = "WATCHLIST";
+    private WatchStatus watchStatus = WatchStatus.WATCHLIST;
 
     @Column(name = "user_you_added")
     @Builder.Default
@@ -80,8 +82,6 @@ public class CoupleMovie {
      * Create a normalized couple key from two user IDs.
      */
     public static String buildCoupleKey(Long userId1, Long userId2) {
-        long min = Math.min(userId1, userId2);
-        long max = Math.max(userId1, userId2);
-        return min + ":" + max;
+        return Math.min(userId1, userId2) + ":" + Math.max(userId1, userId2);
     }
 }

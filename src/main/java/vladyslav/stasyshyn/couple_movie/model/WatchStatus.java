@@ -1,7 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.model;
 
-public enum MovieStatus {
+public enum WatchStatus {
     PLAN_TO_WATCH,
-    WATCHED,
-    DROPPED
+    WATCHLIST,
+    WATCHED
 }

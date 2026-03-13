@@ -10,10 +10,10 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
-import vladyslav.stasyshyn.couple_movie.model.Role;
-import vladyslav.stasyshyn.couple_movie.model.User;
-import vladyslav.stasyshyn.couple_movie.repository.UserRepository;
 
+import vladyslav.stasyshyn.couple_movie.entity.User;
+import vladyslav.stasyshyn.couple_movie.model.Role;
+import vladyslav.stasyshyn.couple_movie.repository.UserRepository;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -24,7 +24,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url}")
     private String frontendUrl;
 
     @Override
@@ -35,6 +35,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String googleId = oAuth2User.getAttribute("sub");
         String firstName = oAuth2User.getAttribute("given_name");
         String lastName = oAuth2User.getAttribute("family_name");
+        String picture = oAuth2User.getAttribute("picture");
 
         String defaultUsername = (lastName != null && !lastName.isEmpty()) ? lastName.toLowerCase()
                 : (firstName != null && !firstName.isEmpty()) ? firstName.toLowerCase()
@@ -56,6 +57,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .displayUsername(defaultUsername)
                     .googleId(googleId)
                     .role(Role.USER)
+                    .avatarUrl(picture)
                     .build();
             userRepository.save(user);
         }

@@ -30,11 +30,13 @@ export default function Search() {
   const [filteredMovies, setFilteredMovies] = useState([]);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [showAwardedOnly, setShowAwardedOnly] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
   const [ratings, setRatings] = useState({});
   const [showFilters, setShowFilters] = useState(false);
 
@@ -47,45 +49,73 @@ export default function Search() {
   const suggestionsRef = useRef(null);
 
   useEffect(() => {
-    if (selectedGenres.length > 0 || selectedEmotions.length > 0) {
+    if (selectedGenres.length > 0 || selectedEmotions.length > 0 || showAwardedOnly) {
       setHasSearched(true);
-      fetchFilters(selectedGenres, selectedEmotions);
+      fetchFilters(selectedGenres, selectedEmotions, 1, showAwardedOnly);
     } else if (searchQuery === "") {
       setFilteredMovies(movies);
     }
     setCurrentPage(1);
-  }, [selectedGenres, selectedEmotions]);
+  }, [selectedGenres, selectedEmotions, showAwardedOnly]);
 
-  const fetchFilters = async (genres, emotions) => {
+  const fetchFilters = async (genres, emotions, page = 1, awarded = false) => {
     setIsLoading(true);
     try {
-      const results = await Movie.filter(genres, emotions);
-      setFilteredMovies(results);
+      const { movies: pageMovies, totalHits: hits } = await Movie.filter(genres, emotions, page - 1, ITEMS_PER_PAGE, awarded);
+      setFilteredMovies(pageMovies);
+      setTotalHits(hits);
+      if (pageMovies.length > 0) {
+        const ids = pageMovies.map(m => m.id).filter(Boolean);
+        if (ids.length > 0) {
+          const ratingsMap = await Movie.batchRatings(ids);
+          setRatings(ratingsMap || {});
+        }
+      }
     } catch (error) {
       console.error(error);
     }
     setIsLoading(false);
   };
 
+  const loadPage = async (query, page) => {
+    const { movies: pageMovies, totalHits: hits } = await Movie.advancedSearch(query, page - 1, ITEMS_PER_PAGE);
+    setFilteredMovies(pageMovies);
+    setTotalHits(hits);
+    if (pageMovies.length > 0) {
+      const ids = pageMovies.map(m => m.id).filter(Boolean);
+      if (ids.length > 0) {
+        const ratingsMap = await Movie.batchRatings(ids);
+        setRatings(ratingsMap || {});
+      }
+    }
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchQuery.trim()) { setMovies([]); setFilteredMovies([]); return; }
+    if (!searchQuery.trim()) { setMovies([]); setFilteredMovies([]); setTotalHits(0); return; }
     setIsSearching(true);
     setHasSearched(true);
     setCurrentPage(1);
     try {
-      const results = await Movie.search(searchQuery.trim());
-      setMovies(results);
-      setFilteredMovies(results);
-      if (results.length > 0) {
-        const ids = results.map(m => m.id).filter(Boolean);
-        if (ids.length > 0) {
-          const ratingsMap = await Movie.batchRatings(ids);
-          setRatings(ratingsMap || {});
-        }
-      }
+      // Populate DB via OMDB first
+      await Movie.search(searchQuery.trim());
+      // Then load page 1 from Meilisearch
+      await loadPage(searchQuery.trim(), 1);
     } catch (error) { }
     setIsSearching(false);
+  };
+
+  const handlePageChange = async (page) => {
+    setCurrentPage(page);
+    setIsLoading(true);
+    try {
+      if (selectedGenres.length > 0 || selectedEmotions.length > 0 || showAwardedOnly) {
+        await fetchFilters(selectedGenres, selectedEmotions, page, showAwardedOnly);
+      } else {
+        await loadPage(searchQuery.trim(), page);
+      }
+    } catch (error) { }
+    setIsLoading(false);
   };
 
   const fetchSuggestions = useCallback(
@@ -134,7 +164,9 @@ export default function Search() {
   const clearFilters = () => {
     setSelectedGenres([]);
     setSelectedEmotions([]);
+    setShowAwardedOnly(false);
     setFilteredMovies(movies);
+    setTotalHits(movies.length);
     setCurrentPage(1);
   };
 
@@ -153,10 +185,9 @@ export default function Search() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const totalPages = Math.ceil(filteredMovies.length / ITEMS_PER_PAGE);
-  const paginatedMovies = filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const moviesWithRatings = paginatedMovies.map(m => ({ ...m, imdb_rating: m.imdb_rating || ratings[m.id] || null }));
-  const activeFiltersCount = selectedGenres.length + selectedEmotions.length;
+  const totalPages = Math.ceil(totalHits / ITEMS_PER_PAGE);
+  const moviesWithRatings = filteredMovies.map(m => ({ ...m, imdb_rating: m.imdb_rating || ratings[m.id] || null }));
+  const activeFiltersCount = selectedGenres.length + selectedEmotions.length + (showAwardedOnly ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -257,7 +288,7 @@ export default function Search() {
               <Filter className="h-4 w-4" />
               Filters
               {activeFiltersCount > 0 && (
-                <Badge className="bg-primary/20 text-primary border-0 text-xs">{activeFiltersCount}</Badge>
+                <Badge variant="secondary" className="bg-primary/20 text-primary border-0 text-xs">{activeFiltersCount}</Badge>
               )}
               {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -314,6 +345,18 @@ export default function Search() {
                     ))}
                   </div>
                 </div>
+
+                <div className="flex items-center justify-start gap-4 border-t border-border pt-4">
+                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <span className="text-xl">🏆</span> Award Winners Only
+                  </span>
+                  <button
+                    onClick={() => setShowAwardedOnly(!showAwardedOnly)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showAwardedOnly ? 'bg-primary' : 'bg-secondary'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAwardedOnly ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -322,22 +365,27 @@ export default function Search() {
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap gap-2">
               {selectedGenres.map(g => (
-                <Badge key={g} className="bg-primary/10 text-primary border-primary/20 gap-1 cursor-pointer" onClick={() => toggleGenre(g)}>
+                <Badge variant="outline" key={g} className="bg-primary/10 text-primary border-primary/20 gap-1 cursor-pointer" onClick={() => toggleGenre(g)}>
                   {g} <X className="h-3 w-3" />
                 </Badge>
               ))}
               {selectedEmotions.map(e => (
-                <Badge key={e} className="bg-accent/10 text-accent border-accent/20 gap-1 capitalize cursor-pointer" onClick={() => toggleEmotion(e)}>
+                <Badge variant="outline" key={e} className="bg-accent/10 text-accent border-accent/20 gap-1 capitalize cursor-pointer" onClick={() => toggleEmotion(e)}>
                   {e} <X className="h-3 w-3" />
                 </Badge>
               ))}
+              {showAwardedOnly && (
+                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1 cursor-pointer" onClick={() => setShowAwardedOnly(false)}>
+                  🏆 Awarded <X className="h-3 w-3" />
+                </Badge>
+              )}
             </div>
           )}
 
           {/* Results count */}
           {!(isLoading || isSearching) && filteredMovies.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              Showing {filteredMovies.length} {filteredMovies.length === 1 ? 'result' : 'results'}{totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}
+              Showing {totalHits} {totalHits === 1 ? 'result' : 'results'}{totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}
             </p>
           )}
           {(isLoading || isSearching) && (
@@ -369,7 +417,7 @@ export default function Search() {
           )}
 
           {!(isLoading || isSearching) && filteredMovies.length > 0 && (
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
 
           {!(isLoading || isSearching) && filteredMovies.length === 0 && hasSearched && (

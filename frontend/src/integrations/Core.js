@@ -1,5 +1,5 @@
 export const InvokeLLM = async ({ prompt, response_json_schema }) => {
-    console.log("Mocking LLM Invocation with prompt:", prompt);
+    // Mocking LLM Invocation
     // Return a mock response structure based on the schema
     // The schema usually expects an object with properties
 

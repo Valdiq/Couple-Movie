@@ -3,18 +3,29 @@ package vladyslav.stasyshyn.couple_movie.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vladyslav.stasyshyn.couple_movie.model.CoupleMovie;
-import vladyslav.stasyshyn.couple_movie.model.User;
 import vladyslav.stasyshyn.couple_movie.repository.CoupleMovieRepository;
+import vladyslav.stasyshyn.couple_movie.model.WatchStatus;
+import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
+import vladyslav.stasyshyn.couple_movie.entity.CoupleMovie;
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
+import vladyslav.stasyshyn.couple_movie.entity.User;
+import vladyslav.stasyshyn.couple_movie.dto.CoupleMovieResponse;
+import vladyslav.stasyshyn.couple_movie.dto.GetStatusResponse;
 
-import java.util.*;
 import java.util.stream.Collectors;
+import java.util.*;
+
+import vladyslav.stasyshyn.couple_movie.dto.AddMovieResponse;
+import vladyslav.stasyshyn.couple_movie.dto.UpdateMovieStatusResponse;
+import vladyslav.stasyshyn.couple_movie.dto.RateMovieResponse;
+import vladyslav.stasyshyn.couple_movie.exception.ResourceNotFoundException;
 
 @Service
 @RequiredArgsConstructor
 public class CoupleMovieService {
 
     private final CoupleMovieRepository coupleMovieRepository;
+    private final MovieRepository movieRepository;
 
     private String getCoupleKey(User user) {
         if (user.getPartnerId() == null) {
@@ -23,52 +34,16 @@ public class CoupleMovieService {
         return CoupleMovie.buildCoupleKey(user.getId(), user.getPartnerId());
     }
 
-    public List<Map<String, Object>> getSharedMovies(User user) {
+    @Transactional(readOnly = true)
+    public List<CoupleMovieResponse> getSharedMovies(User user) {
         String coupleKey = getCoupleKey(user);
-        List<CoupleMovie> movies = coupleMovieRepository.findByCoupleKey(coupleKey);
+        var movies = coupleMovieRepository.findByCoupleKeyWithDetails(coupleKey, user.getId());
 
-        return movies.stream().map(m -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", m.getId());
-            map.put("imdb_id", m.getImdbId());
-            map.put("title", m.getTitle());
-            map.put("poster", m.getPoster());
-            map.put("year", m.getYear());
-            map.put("genre", m.getGenre());
-            map.put("watch_status", m.getWatchStatus());
-            map.put("added_by_user_id", m.getAddedByUserId());
-            boolean isAdder = m.getAddedByUserId() != null && m.getAddedByUserId().equals(user.getId());
-            map.put("user_you_added", isAdder ? m.isUserYouAdded() : m.isPartnerAdded());
-            map.put("partner_added", isAdder ? m.isPartnerAdded() : m.isUserYouAdded());
-            map.put("is_match", isMatch(coupleKey, m.getImdbId(), user));
-            // Per-user ratings: figure out which slot is "you" and which is "partner"
-            if (m.getUser1Id() != null && m.getUser1Id().equals(user.getId())) {
-                map.put("your_rating", m.getUser1Rating());
-                map.put("partner_rating", m.getUser2Rating());
-            } else {
-                map.put("your_rating", m.getUser2Rating());
-                map.put("partner_rating", m.getUser1Rating());
-            }
-            map.put("created_at", m.getCreatedAt() != null ? m.getCreatedAt().toString() : null);
-            return map;
-        }).collect(Collectors.toList());
-    }
-
-    /**
-     * A movie is a "match" if both users have added it (via their individual
-     * favorites)
-     * For simplicity, we track match status by checking if the CoupleMovie was
-     * already present
-     * when the second partner adds it.
-     */
-    private boolean isMatch(String coupleKey, String imdbId, User user) {
-        // We treat movies added by different people as matches
-        var opt = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
-        return opt.map(cm -> cm.isUserYouAdded() && cm.isPartnerAdded()).orElse(false);
+        return movies.stream().map(CoupleMovieResponse::fromProjection).collect(Collectors.toList());
     }
 
     @Transactional
-    public Map<String, Object> addMovie(User user, Map<String, Object> movieData) {
+    public AddMovieResponse addMovie(User user, Map<String, Object> movieData) {
         String coupleKey = getCoupleKey(user);
         String imdbId = movieData.get("imdb_id") != null ? String.valueOf(movieData.get("imdb_id")) : null;
 
@@ -77,40 +52,39 @@ public class CoupleMovieService {
         }
 
         var existing = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
-        CoupleMovie movie;
+        CoupleMovie movieToAdd;
 
         if (existing.isPresent()) {
-            movie = existing.get();
-            // Mark the current user as having added it too
-            if (movie.getAddedByUserId().equals(user.getId())) {
-                movie.setUserYouAdded(true);
+            movieToAdd = existing.get();
+            if (movieToAdd.getAddedByUserId().equals(user.getId())) {
+                movieToAdd.setUserYouAdded(true);
             } else {
-                movie.setPartnerAdded(true);
+                movieToAdd.setPartnerAdded(true);
             }
-            // If both added, it's a match
-            coupleMovieRepository.save(movie);
         } else {
-            movie = CoupleMovie.builder()
+            Movie newMovieToAdd = movieRepository.findById(imdbId).orElse(null);
+
+            movieToAdd = CoupleMovie.builder()
                     .coupleKey(coupleKey)
                     .imdbId(imdbId)
-                    .title(movieData.containsKey("title") ? String.valueOf(movieData.get("title")) : "")
-                    .poster(movieData.containsKey("poster") ? String.valueOf(movieData.get("poster")) : "")
-                    .year(movieData.containsKey("year") ? String.valueOf(movieData.get("year")) : "")
-                    .genre(movieData.containsKey("genre") ? String.valueOf(movieData.get("genre")) : "")
+                    .title(newMovieToAdd != null && newMovieToAdd.getTitle() != null ? newMovieToAdd.getTitle() : "")
+                    .poster(newMovieToAdd != null && newMovieToAdd.getPoster() != null ? newMovieToAdd.getPoster() : "")
+                    .year(newMovieToAdd != null && newMovieToAdd.getYear() != null ? newMovieToAdd.getYear() : "")
+                    .genre(newMovieToAdd != null && newMovieToAdd.getGenre() != null ? newMovieToAdd.getGenre() : "")
                     .addedByUserId(user.getId())
                     .userYouAdded(true)
                     .partnerAdded(false)
                     .user1Id(user.getId())
                     .build();
-            coupleMovieRepository.save(movie);
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", movie.getId());
-        result.put("imdb_id", movie.getImdbId());
-        result.put("title", movie.getTitle());
-        result.put("message", "Added to shared favorites");
-        return result;
+        coupleMovieRepository.save(Objects.requireNonNull(movieToAdd));
+
+        return new AddMovieResponse(
+                movieToAdd.getId(),
+                movieToAdd.getImdbId(),
+                movieToAdd.getTitle(),
+                "Added to shared favorites");
     }
 
     @Transactional
@@ -120,51 +94,45 @@ public class CoupleMovieService {
     }
 
     @Transactional
-    public Map<String, Object> updateMovieStatus(User user, String imdbId, String watchStatus) {
+    public UpdateMovieStatusResponse updateMovieStatus(User user, String imdbId, Map<String, String> body) {
+        WatchStatus watchStatus = WatchStatus.valueOf(body.getOrDefault("watch_status", "WATCHLIST"));
         String coupleKey = getCoupleKey(user);
-        var opt = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Movie not found in shared list");
-        }
-        CoupleMovie movie = opt.get();
+
+        CoupleMovie movie = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found in shared list"));
+
         movie.setWatchStatus(watchStatus);
         coupleMovieRepository.save(movie);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("imdb_id", movie.getImdbId());
-        result.put("watch_status", movie.getWatchStatus());
-        result.put("message", "Updated successfully");
-        return result;
+        return new UpdateMovieStatusResponse(
+                movie.getImdbId(),
+                movie.getWatchStatus(),
+                "Updated successfully");
     }
 
-    public Map<String, Object> getStats(User user) {
+    @Transactional(readOnly = true)
+    public GetStatusResponse getStats(User user) {
         String coupleKey = getCoupleKey(user);
-        List<CoupleMovie> all = coupleMovieRepository.findByCoupleKey(coupleKey);
+        List<CoupleMovie> allMovies = coupleMovieRepository.findByCoupleKey(coupleKey);
 
-        long matches = all.stream().filter(m -> m.isUserYouAdded() && m.isPartnerAdded()).count();
-        long watchlist = all.stream().filter(m -> "WATCHLIST".equals(m.getWatchStatus())).count();
-        long watched = all.stream().filter(m -> "WATCHED".equals(m.getWatchStatus())).count();
+        int matches = (int) allMovies.stream().filter(m -> m.isUserYouAdded() && m.isPartnerAdded()).count();
+        int watchlist = (int) allMovies.stream().filter(m -> WatchStatus.WATCHLIST == m.getWatchStatus()).count();
+        int watched = (int) allMovies.stream().filter(m -> WatchStatus.WATCHED == m.getWatchStatus()).count();
 
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("matches", matches);
-        stats.put("watchlist", watchlist);
-        stats.put("watched", watched);
-        return stats;
+        return new GetStatusResponse(
+                matches,
+                watchlist,
+                watched);
     }
 
     @Transactional
-    public Map<String, Object> rateMovie(User user, String imdbId, double rating) {
-        if (rating < 0.5 || rating > 5.0) {
-            throw new IllegalArgumentException("Rating must be between 0.5 and 5");
-        }
+    public RateMovieResponse rateMovie(User user, String imdbId, Map<String, Object> body) {
+        double rating = Double.parseDouble(String.valueOf(body.get("rating")));
         String coupleKey = getCoupleKey(user);
-        var opt = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Movie not found in shared list");
-        }
-        CoupleMovie movie = opt.get();
 
-        // Store rating in the correct user slot
+        CoupleMovie movie = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found in shared list"));
+
         if (movie.getUser1Id() != null && movie.getUser1Id().equals(user.getId())) {
             movie.setUser1Rating(rating);
         } else if (movie.getUser2Id() != null && movie.getUser2Id().equals(user.getId())) {
@@ -177,33 +145,30 @@ public class CoupleMovieService {
             movie.setUser2Rating(rating);
         }
 
-        // Auto-mark as watched when rated
-        movie.setWatchStatus("WATCHED");
         coupleMovieRepository.save(movie);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("imdb_id", movie.getImdbId());
-        result.put("your_rating", rating);
-        result.put("watch_status", movie.getWatchStatus());
-        result.put("message", "Rated successfully");
-        return result;
+        return new RateMovieResponse(
+                movie.getImdbId(),
+                rating,
+                movie.getWatchStatus(),
+                "Rated successfully");
     }
 
-    public Map<String, Object> checkMovie(User user, String imdbId) {
+    @Transactional(readOnly = true)
+    public boolean isAddedByUser(User user, String imdbId) {
         if (user.getPartnerId() == null) {
-            return Map.of("in_list", false);
+            return false;
         }
+
         String coupleKey = getCoupleKey(user);
         var opt = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId);
         if (opt.isEmpty()) {
-            return Map.of("in_list", false);
+            return false;
         }
 
         CoupleMovie movie = opt.get();
-        boolean userAdded = movie.getAddedByUserId() != null && movie.getAddedByUserId().equals(user.getId())
+        return movie.getAddedByUserId() != null && movie.getAddedByUserId().equals(user.getId())
                 ? movie.isUserYouAdded()
                 : movie.isPartnerAdded();
-
-        return Map.of("in_list", userAdded);
     }
 }

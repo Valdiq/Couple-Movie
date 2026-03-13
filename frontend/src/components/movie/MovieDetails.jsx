@@ -54,7 +54,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           const checkFav = UserFavorite.check(imdbId);
           const checkCouple = currentUser.partner_id
             ? coupleMovieService.check(imdbId)
-            : Promise.resolve({ in_list: false });
+            : Promise.resolve(false);
 
           const [favStatus, coupleStatus] = await Promise.all([checkFav, checkCouple]);
 
@@ -63,9 +63,9 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           // Only update couple list state from API if the user hasn't already
           // clicked Add to Couple List (which would have set the optimistic state)
           if (!coupleActionTakenRef.current) {
-            setIsInCoupleList(coupleStatus.in_list);
+            setIsInCoupleList(coupleStatus);
             // Also sync back to the movie object so reopening is correct
-            if (movie) movie.in_couple_list = coupleStatus.in_list;
+            if (movie) movie.in_couple_list = coupleStatus;
           }
         }
       } catch (error) {
@@ -131,11 +131,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
     try {
       await coupleMovieService.add({
-        imdb_id: movieImdbId,
-        title: displayMovie.title || '',
-        poster: displayMovie.poster || '',
-        year: displayMovie.year || '',
-        genre: displayMovie.genre || ''
+        imdb_id: movieImdbId
       });
       setCoupleMessage({ type: 'success', text: 'Added to Couple Watchlist!' });
 
@@ -146,7 +142,8 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
     } catch (error) {
       coupleActionTakenRef.current = false;
       setIsInCoupleList(false);
-      setCoupleMessage({ type: 'error', text: 'Failed to add to couple list' });
+      const msg = error.response?.status === 400 ? 'Create a Couple Space first!' : 'Failed to add to couple list';
+      setCoupleMessage({ type: 'error', text: msg });
     }
   };
 
@@ -234,11 +231,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                           {displayMovie.runtime}
                         </div>
                       )}
-                      {displayMovie.rated && displayMovie.rated !== 'N/A' && (
-                        <Badge variant="secondary" className="text-muted-foreground">
-                          {displayMovie.rated}
-                        </Badge>
-                      )}
+
                       {displayMovie.type && (
                         <div className="flex items-center gap-2 capitalize">
                           {displayMovie.type === 'series' ? <Tv className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -260,10 +253,16 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                           )}
                         </div>
                       )}
-                      {displayMovie.metascore && displayMovie.metascore !== 'N/A' && (
-                        <Badge variant="secondary" className="bg-green-900/50 text-green-300 border-green-700/50">
-                          Metascore: {displayMovie.metascore}
-                        </Badge>
+
+                      {displayMovie.awards && displayMovie.awards !== 'N/A' && (
+                        <div className="flex items-center gap-2 border-l border-border pl-6">
+                          {/\b(win|wins|won)\b/i.test(displayMovie.awards) ? (
+                            <Award className="w-5 h-5 text-yellow-500 fill-yellow-500/20" />
+                          ) : /\b(nomination|nominated|nominations)\b/i.test(displayMovie.awards) ? (
+                            <Award className="w-5 h-5 text-slate-300 fill-slate-300/20" />
+                          ) : <Award className="w-5 h-5 text-muted-foreground" />}
+                          <span className="text-muted-foreground text-sm">{displayMovie.awards}</span>
+                        </div>
                       )}
                     </div>
                   </div>

@@ -1,24 +1,14 @@
 package vladyslav.stasyshyn.couple_movie.dto.omdb;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 
-@Data
-public class OmdbMovieSummary {
-    @JsonProperty("Title")
-    private String title;
-
-    @JsonProperty("Year")
-    private String year;
-
-    @JsonProperty("imdbID")
-    private String imdbID;
-
-    @JsonProperty("Type")
-    private String type;
-
-    @JsonProperty("Poster")
-    private String poster;
-
-    private Double imdbRating;
+public record OmdbMovieSummary(
+                @JsonProperty("Title") String title,
+                @JsonProperty("Year") String year,
+                @JsonProperty("imdbID") String imdbID,
+                @JsonProperty("Type") String type,
+                @JsonProperty("Poster") String poster,
+                @JsonProperty("Genre") String genre,
+                @JsonProperty("Awards") String awards,
+                Double imdbRating) {
 }

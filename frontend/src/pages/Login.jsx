@@ -50,7 +50,7 @@ const Login = () => {
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input id="email" type="email" placeholder="m@example.com" value={email}
-                                onChange={(e) => setEmail(e.target.value)} required
+                                onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
                                 className="border-border bg-background text-foreground" />
                         </div>
                         <div className="space-y-2">
@@ -61,7 +61,7 @@ const Login = () => {
                                 </Link>
                             </div>
                             <Input id="password" type="password" value={password}
-                                onChange={(e) => setPassword(e.target.value)} required
+                                onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
                                 className="border-border bg-background text-foreground" />
                         </div>
                         <Button type="submit" className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90" disabled={loading}>

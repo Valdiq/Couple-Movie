@@ -1,10 +1,15 @@
 package vladyslav.stasyshyn.couple_movie.controller;
 
 import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import vladyslav.stasyshyn.couple_movie.model.User;
+import vladyslav.stasyshyn.couple_movie.entity.CoupleRequest;
+import vladyslav.stasyshyn.couple_movie.entity.User;
+import vladyslav.stasyshyn.couple_movie.exception.UnauthorizedException;
 import vladyslav.stasyshyn.couple_movie.service.CoupleService;
 
 /**
@@ -25,14 +30,11 @@ public class CoupleController {
      * @return The created invitation request.
      */
     @PostMapping("/invite")
-    public ResponseEntity<?> sendInvite(@AuthenticationPrincipal User user, @RequestParam("username") String username) {
-        try {
-            return ResponseEntity.ok(coupleService.sendInvite(user, username));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("An unexpected error occurred while sending invite.");
+    public ResponseEntity<CoupleRequest> sendInvite(@AuthenticationPrincipal User user, @RequestParam("username") String username) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        return ResponseEntity.ok(coupleService.sendInvite(user, username));
     }
 
     /**
@@ -43,16 +45,13 @@ public class CoupleController {
      * @return A success message.
      */
     @PostMapping("/accept/{requestId}")
-    public ResponseEntity<?> acceptInvite(@AuthenticationPrincipal User user,
+    public ResponseEntity<Map<String, Object>> acceptInvite(@AuthenticationPrincipal User user,
             @PathVariable("requestId") Long requestId) {
-        try {
-            coupleService.acceptInvite(user, requestId);
-            return ResponseEntity.ok("Invite accepted");
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("An unexpected error occurred while accepting invite.");
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        coupleService.acceptInvite(user, requestId);
+        return ResponseEntity.ok(Map.of("message", "Invite accepted"));
     }
 
     /**
@@ -63,16 +62,13 @@ public class CoupleController {
      * @return A success message.
      */
     @PostMapping("/reject/{requestId}")
-    public ResponseEntity<?> rejectInvite(@AuthenticationPrincipal User user,
+    public ResponseEntity<Map<String, Object>> rejectInvite(@AuthenticationPrincipal User user,
             @PathVariable("requestId") Long requestId) {
-        try {
-            coupleService.rejectInvite(user, requestId);
-            return ResponseEntity.ok("Invite rejected");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("An unexpected error occurred while rejecting invite.");
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        coupleService.rejectInvite(user, requestId);
+        return ResponseEntity.ok(Map.of("message", "Invite rejected"));
     }
 
     /**
@@ -82,12 +78,11 @@ public class CoupleController {
      * @return A list of received invitations.
      */
     @GetMapping("/invites")
-    public ResponseEntity<?> getInvites(@AuthenticationPrincipal User user) {
-        try {
-            return ResponseEntity.ok(coupleService.getReceivedInvites(user));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error retrieving invites: " + e.getMessage());
+    public ResponseEntity<List<CoupleRequest>> getInvites(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        return ResponseEntity.ok(coupleService.getReceivedInvites(user));
     }
 
     /**
@@ -97,27 +92,22 @@ public class CoupleController {
      * @return The partner user details, if connected.
      */
     @GetMapping("/partner")
-    public ResponseEntity<?> getPartner(@AuthenticationPrincipal User user) {
-        try {
-            return ResponseEntity.of(coupleService.getPartner(user));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error retrieving partner: " + e.getMessage());
+    public ResponseEntity<User> getPartner(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        return ResponseEntity.of(Objects.requireNonNull(coupleService.getPartner(user)));
     }
 
     /**
      * Break the couple link.
      */
     @PostMapping("/break")
-    public ResponseEntity<?> breakCouple(@AuthenticationPrincipal User user) {
-        try {
-            coupleService.breakCouple(user);
-            return ResponseEntity.ok(java.util.Map.of("message", "Couple link broken successfully"));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body("An unexpected error occurred while breaking couple link.");
+    public ResponseEntity<Map<String, Object>> breakCouple(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
         }
+        coupleService.breakCouple(user);
+        return ResponseEntity.ok(Map.of("message", "Couple link broken successfully"));
     }
 }

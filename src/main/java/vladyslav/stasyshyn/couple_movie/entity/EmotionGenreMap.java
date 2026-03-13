@@ -1,11 +1,10 @@
-package vladyslav.stasyshyn.couple_movie.model;
+package vladyslav.stasyshyn.couple_movie.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.util.List;
 
 @Data
@@ -18,8 +17,10 @@ public class EmotionGenreMap {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id")
     private String id;
 
+    @Column(name = "emotion")
     private String emotion;
 
     @ElementCollection

@@ -3,8 +3,7 @@ package vladyslav.stasyshyn.couple_movie.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-import vladyslav.stasyshyn.couple_movie.model.Movie;
-
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import java.util.Optional;
 
 @Repository
