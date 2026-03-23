@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { motion } from "framer-motion";
-import { Star, Heart, Users, Check, Plus, Film } from "lucide-react";
+import { Star, Heart, Users, Check, Plus, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { cn } from "@/lib/utils";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 export default function MovieCard({
   movie,
   onSelect,
   variant = "default",
-  coupleStatus,
+  coupleStatus = null,
   showCoupleAdd = false,
-  onAddToCouple,
+  onAddToCouple = null,
 }) {
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { userFavorites, addFavoriteId, removeFavoriteId, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -24,14 +26,11 @@ export default function MovieCard({
   const movieImdbId = movie?.imdbID || movie?.imdb_id || movie?.id || "";
   const movieRating = movie?.imdbRating || movie?.imdb_rating || "";
   const movieRuntime = movie?.Runtime || movie?.runtime || "";
+  const movieAwards = movie?.Awards || movie?.awards || "";
 
   const isMatch = coupleStatus?.user_you_added && coupleStatus?.partner_added;
 
-  useEffect(() => {
-    if (variant === "default" && movieImdbId) {
-      UserFavorite.check(movieImdbId).then(setIsFavorite).catch(() => { });
-    }
-  }, [movieImdbId, variant]);
+  const isFavorite = isAuthenticated && userFavorites?.includes(movieImdbId);
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
@@ -39,16 +38,12 @@ export default function MovieCard({
     try {
       if (isFavorite) {
         await UserFavorite.remove(movieImdbId);
-        setIsFavorite(false);
+        removeFavoriteId(movieImdbId);
       } else {
         await UserFavorite.add({
           imdb_id: movieImdbId,
-          title: movieTitle,
-          poster: moviePoster,
-          year: movieYear,
-          genre: movieGenre,
         });
-        setIsFavorite(true);
+        addFavoriteId(movieImdbId);
       }
     } catch (error) {
       console.error("Error handling favorite:", error);
@@ -87,13 +82,17 @@ export default function MovieCard({
           <img
             src={moviePoster}
             alt={`${movieTitle} poster`}
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-secondary">
-            <span className="text-4xl font-bold text-muted-foreground">
-              {movieTitle.charAt(0) || <Film className="w-12 h-12" />}
+          <div className="flex h-full w-full flex-col items-center justify-center bg-secondary gap-2 p-4 text-center">
+            <div className="text-5xl">
+              <AppleEmoji emoji="🍿" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground line-clamp-2">
+              {movieTitle || "Movie"}
             </span>
           </div>
         )}
@@ -134,18 +133,33 @@ export default function MovieCard({
         {/* Match badge */}
         {isMatch && (
           <div className="absolute left-2 top-2">
-            <Badge className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 gap-1 text-[10px]">
+            <Badge variant="default" className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 gap-1 text-[10px]">
               <Heart className="h-3 w-3 fill-current" />
               Match
             </Badge>
           </div>
         )}
 
-        {/* Rating */}
-        {movieRating && movieRating !== "N/A" && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            {movieRating}
+        {/* Rating and Awards */}
+        <div className="absolute bottom-2 left-2 flex flex-col gap-1 items-start">
+          {movieRating && movieRating !== "N/A" && (
+            <div className="flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              {movieRating}
+            </div>
+          )}
+        </div>
+        {movieAwards && movieAwards !== "N/A" && (
+          <div className="absolute bottom-2 right-2">
+            {/\b(win|wins|won)\b/i.test(movieAwards) ? (
+              <div title={movieAwards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                <Award className="h-4 w-4 text-yellow-500 fill-yellow-500/20" />
+              </div>
+            ) : /\b(nomination|nominated|nominations)\b/i.test(movieAwards) ? (
+              <div title={movieAwards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                <Award className="h-4 w-4 text-slate-300 fill-slate-300/20" />
+              </div>
+            ) : null}
           </div>
         )}
       </div>

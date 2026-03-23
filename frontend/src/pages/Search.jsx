@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search as SearchIcon, Filter, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Search as SearchIcon, Filter, Loader2, X, ChevronDown, ChevronUp, Film } from "lucide-react";
+import debounce from "lodash/debounce";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import ChatWidget from "../components/chat/ChatWidget";
 import Pagination from "../components/ui/Pagination";
 import AppleEmoji from "@/components/ui/AppleEmoji";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 20;
 
 const availableGenres = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
 
@@ -29,56 +30,108 @@ export default function Search() {
   const [filteredMovies, setFilteredMovies] = useState([]);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [showAwardedOnly, setShowAwardedOnly] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [ratings, setRatings] = useState({});
+  const [totalHits, setTotalHits] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Autocomplete state
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const suggestionsRef = useRef(null);
+
   useEffect(() => {
-    if (selectedGenres.length > 0 || selectedEmotions.length > 0) {
+    if (selectedGenres.length > 0 || selectedEmotions.length > 0 || showAwardedOnly) {
       setHasSearched(true);
-      fetchFilters(selectedGenres, selectedEmotions);
+      fetchFilters(selectedGenres, selectedEmotions, 1, showAwardedOnly);
     } else if (searchQuery === "") {
       setFilteredMovies(movies);
     }
     setCurrentPage(1);
-  }, [selectedGenres, selectedEmotions]);
+  }, [selectedGenres, selectedEmotions, showAwardedOnly]);
 
-  const fetchFilters = async (genres, emotions) => {
+  const fetchFilters = async (genres, emotions, page = 1, awarded = false) => {
     setIsLoading(true);
     try {
-      const results = await Movie.filter(genres, emotions);
-      setFilteredMovies(results);
+      const { movies: pageMovies, totalHits: hits } = await Movie.filter(genres, emotions, page - 1, ITEMS_PER_PAGE, awarded);
+      setFilteredMovies(pageMovies);
+      setTotalHits(hits);
     } catch (error) {
       console.error(error);
     }
     setIsLoading(false);
   };
 
+  const loadPage = async (query, page) => {
+    const { movies: pageMovies, totalHits: hits } = await Movie.advancedSearch(query, page - 1, ITEMS_PER_PAGE);
+    setFilteredMovies(pageMovies);
+    setTotalHits(hits);
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchQuery.trim()) { setMovies([]); setFilteredMovies([]); return; }
+    if (!searchQuery.trim()) { setMovies([]); setFilteredMovies([]); setTotalHits(0); return; }
     setIsSearching(true);
     setHasSearched(true);
     setCurrentPage(1);
     try {
-      const results = await Movie.search(searchQuery.trim());
-      setMovies(results);
-      setFilteredMovies(results);
-      if (results.length > 0) {
-        const ids = results.map(m => m.id).filter(Boolean);
-        if (ids.length > 0) {
-          const ratingsMap = await Movie.batchRatings(ids);
-          setRatings(ratingsMap || {});
-        }
-      }
+      // Populate DB via OMDB first
+      await Movie.search(searchQuery.trim());
+      // Then load page 1 from Meilisearch
+      await loadPage(searchQuery.trim(), 1);
     } catch (error) { }
     setIsSearching(false);
+  };
+
+  const handlePageChange = async (page) => {
+    setCurrentPage(page);
+    setIsLoading(true);
+    try {
+      if (selectedGenres.length > 0 || selectedEmotions.length > 0 || showAwardedOnly) {
+        await fetchFilters(selectedGenres, selectedEmotions, page, showAwardedOnly);
+      } else {
+        await loadPage(searchQuery.trim(), page);
+      }
+    } catch (error) { }
+    setIsLoading(false);
+  };
+
+  const fetchSuggestions = useCallback(
+    debounce(async (query) => {
+      if (!query.trim()) {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+        setIsSuggesting(false);
+        return;
+      }
+      setIsSuggesting(true);
+      try {
+        const results = await Movie.autocomplete(query.trim(), 5);
+        setSearchSuggestions(results);
+        if (results.length > 0) {
+          setShowSuggestions(true);
+        } else {
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch suggestions", error);
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 300),
+    []
+  );
+
+  const handleSuggestionClick = (suggestion) => {
+    setShowSuggestions(false);
+    handleMovieSelect(suggestion);
   };
 
   const toggleGenre = (genre) => {
@@ -96,19 +149,29 @@ export default function Search() {
   const clearFilters = () => {
     setSelectedGenres([]);
     setSelectedEmotions([]);
+    setShowAwardedOnly(false);
     setFilteredMovies(movies);
+    setTotalHits(movies.length);
     setCurrentPage(1);
   };
 
   const handleMovieSelect = (movie) => {
-    setSelectedMovie({ ...movie, imdb_rating: movie.imdb_rating || ratings[movie.id] || null });
+    setSelectedMovie({ ...movie, imdb_rating: movie.imdb_rating || null });
     setIsDetailsOpen(true);
   };
 
-  const totalPages = Math.ceil(filteredMovies.length / ITEMS_PER_PAGE);
-  const paginatedMovies = filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const moviesWithRatings = paginatedMovies.map(m => ({ ...m, imdb_rating: m.imdb_rating || ratings[m.id] || null }));
-  const activeFiltersCount = selectedGenres.length + selectedEmotions.length;
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const totalPages = Math.ceil(totalHits / ITEMS_PER_PAGE);
+  const activeFiltersCount = selectedGenres.length + selectedEmotions.length + (showAwardedOnly ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -126,16 +189,71 @@ export default function Search() {
         <div className="space-y-6">
           {/* Search bar */}
           <motion.form onSubmit={handleSearch} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="mx-auto flex max-w-2xl gap-2"
+            className="mx-auto flex max-w-2xl gap-2 z-40 relative"
           >
-            <div className="relative flex-1">
+            <div className="relative flex-1" ref={suggestionsRef}>
               <SearchIcon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  fetchSuggestions(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => {
+                  if (searchSuggestions.length > 0) setShowSuggestions(true);
+                }}
                 placeholder="Search by movie title..."
                 className="h-12 w-full rounded-xl border-border bg-card pl-12 text-foreground placeholder:text-muted-foreground focus:border-primary"
               />
+
+              {/* Autocomplete Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+                  >
+                    <ul>
+                      {searchSuggestions.map((suggestion, index) => (
+                        <li key={suggestion.id || index}>
+                          <button
+                            type="button"
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/80 focus:bg-secondary/80 focus:outline-none"
+                          >
+                            {suggestion.poster && suggestion.poster !== "N/A" ? (
+                              <img src={suggestion.poster} alt={suggestion.title} className="h-10 w-7 rounded object-cover shadow-sm" />
+                            ) : (
+                              <div className="flex h-10 w-7 items-center justify-center rounded bg-secondary text-muted-foreground">
+                                <Film className="h-4 w-4" />
+                              </div>
+                            )}
+                            <div className="flex flex-col flex-1 truncate">
+                              <span className="truncate font-medium text-foreground">{suggestion.title}</span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {suggestion.year && <span>{suggestion.year}</span>}
+                                {suggestion.genre && (
+                                  <>
+                                    <span className="h-1 w-1 rounded-full bg-border" />
+                                    <span className="truncate">{suggestion.genre.split(',')[0]}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {suggestion.imdb_rating && suggestion.imdb_rating !== "N/A" && (
+                              <Badge variant="secondary" className="ml-2 font-mono text-xs">⭐ {suggestion.imdb_rating}</Badge>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <Button type="submit" disabled={isSearching}
               className="h-12 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2 shadow-lg shadow-primary/20"
@@ -154,7 +272,7 @@ export default function Search() {
               <Filter className="h-4 w-4" />
               Filters
               {activeFiltersCount > 0 && (
-                <Badge className="bg-primary/20 text-primary border-0 text-xs">{activeFiltersCount}</Badge>
+                <Badge variant="secondary" className="bg-primary/20 text-primary border-0 text-xs">{activeFiltersCount}</Badge>
               )}
               {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -211,6 +329,18 @@ export default function Search() {
                     ))}
                   </div>
                 </div>
+
+                <div className="flex items-center justify-start gap-4 border-t border-border pt-4">
+                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <span className="text-xl">🏆</span> Award Winners Only
+                  </span>
+                  <button
+                    onClick={() => setShowAwardedOnly(!showAwardedOnly)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showAwardedOnly ? 'bg-primary' : 'bg-secondary'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAwardedOnly ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -219,22 +349,27 @@ export default function Search() {
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap gap-2">
               {selectedGenres.map(g => (
-                <Badge key={g} className="bg-primary/10 text-primary border-primary/20 gap-1 cursor-pointer" onClick={() => toggleGenre(g)}>
+                <Badge variant="outline" key={g} className="bg-primary/10 text-primary border-primary/20 gap-1 cursor-pointer" onClick={() => toggleGenre(g)}>
                   {g} <X className="h-3 w-3" />
                 </Badge>
               ))}
               {selectedEmotions.map(e => (
-                <Badge key={e} className="bg-accent/10 text-accent border-accent/20 gap-1 capitalize cursor-pointer" onClick={() => toggleEmotion(e)}>
+                <Badge variant="outline" key={e} className="bg-accent/10 text-accent border-accent/20 gap-1 capitalize cursor-pointer" onClick={() => toggleEmotion(e)}>
                   {e} <X className="h-3 w-3" />
                 </Badge>
               ))}
+              {showAwardedOnly && (
+                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1 cursor-pointer" onClick={() => setShowAwardedOnly(false)}>
+                  🏆 Awarded <X className="h-3 w-3" />
+                </Badge>
+              )}
             </div>
           )}
 
           {/* Results count */}
           {!(isLoading || isSearching) && filteredMovies.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              Showing {filteredMovies.length} {filteredMovies.length === 1 ? 'result' : 'results'}{totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}
+              Showing {totalHits} {totalHits === 1 ? 'result' : 'results'}{totalPages > 1 ? ` · Page ${currentPage} of ${totalPages}` : ''}
             </p>
           )}
           {(isLoading || isSearching) && (
@@ -256,7 +391,7 @@ export default function Search() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
               >
-                {moviesWithRatings.map((movie, index) => (
+                {filteredMovies.map((movie, index) => (
                   <motion.div key={`${movie.id || movie.imdb_id || 'movie'}-${index}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
                     <MovieCard movie={movie} onSelect={handleMovieSelect} />
                   </motion.div>
@@ -266,7 +401,7 @@ export default function Search() {
           )}
 
           {!(isLoading || isSearching) && filteredMovies.length > 0 && (
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
 
           {!(isLoading || isSearching) && filteredMovies.length === 0 && hasSearched && (

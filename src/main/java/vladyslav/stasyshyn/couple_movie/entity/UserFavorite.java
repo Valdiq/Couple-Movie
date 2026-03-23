@@ -1,4 +1,4 @@
-package vladyslav.stasyshyn.couple_movie.model;
+package vladyslav.stasyshyn.couple_movie.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
+import vladyslav.stasyshyn.couple_movie.model.WatchStatus;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,6 +21,7 @@ public class UserFavorite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -42,9 +43,10 @@ public class UserFavorite {
     @Column(name = "genre")
     private String genre;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "watch_status")
     @Builder.Default
-    private String watchStatus = "PLAN_TO_WATCH";
+    private WatchStatus watchStatus = WatchStatus.PLAN_TO_WATCH;
 
     @Column(name = "user_rating")
     private Double userRating;

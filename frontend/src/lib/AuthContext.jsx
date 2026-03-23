@@ -1,14 +1,16 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { userFavoriteService } from '../services/userFavoriteService';
+import { coupleMovieService } from '../services/coupleMovieService';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-    const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false); // No public settingscheck needed
-    const [authError, setAuthError] = useState(null);
+    const [userFavorites, setUserFavorites] = useState([]);
+    const [myCoupleMovieIds, setMyCoupleMovieIds] = useState([]);
 
     useEffect(() => {
         checkUserAuth();
@@ -21,8 +23,20 @@ export const AuthProvider = ({ children }) => {
             if (currentUser) {
                 setUser(currentUser);
                 setIsAuthenticated(true);
+                try {
+                    const [favIds, coupleIds] = await Promise.all([
+                        userFavoriteService.getIds(),
+                        currentUser.partner_id ? coupleMovieService.getMyIds() : Promise.resolve([])
+                    ]);
+                    setUserFavorites(favIds);
+                    setMyCoupleMovieIds(coupleIds);
+                } catch (e) {
+                    console.error("Failed to load user preferences", e);
+                }
             } else {
                 setIsAuthenticated(false);
+                setUserFavorites([]);
+                setMyCoupleMovieIds([]);
             }
         } catch (error) {
             console.error("Auth check failed", error);
@@ -42,11 +56,19 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
-    const logout = () => {
-        authService.logout();
+    const logout = async () => {
         setUser(null);
         setIsAuthenticated(false);
+        setUserFavorites([]);
+        setMyCoupleMovieIds([]);
+        await authService.logout();
     };
+
+    const addFavoriteId = (id) => setUserFavorites(prev => [...prev, id]);
+    const removeFavoriteId = (id) => setUserFavorites(prev => prev.filter(fid => fid !== id));
+    
+    const addCoupleMovieId = (id) => setMyCoupleMovieIds(prev => [...prev, id]);
+    const removeCoupleMovieId = (id) => setMyCoupleMovieIds(prev => prev.filter(fid => fid !== id));
 
     const navigateToLogin = () => {
         window.location.href = '/login';
@@ -57,11 +79,15 @@ export const AuthProvider = ({ children }) => {
             user,
             isAuthenticated,
             isLoadingAuth,
-            isLoadingPublicSettings,
-            authError,
             login,
             logout,
-            navigateToLogin
+            navigateToLogin,
+            userFavorites,
+            addFavoriteId,
+            removeFavoriteId,
+            myCoupleMovieIds,
+            addCoupleMovieId,
+            removeCoupleMovieId
         }}>
             {children}
         </AuthContext.Provider>

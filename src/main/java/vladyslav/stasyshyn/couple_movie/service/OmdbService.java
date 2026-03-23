@@ -7,9 +7,13 @@ import org.springframework.web.client.RestClient;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieDetails;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieSummary;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
+import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -18,37 +22,48 @@ public class OmdbService {
     private final RestClient restClient;
     private final String apiKey;
     private final MovieSearchService movieSearchService;
+    private final MovieRepository movieRepository;
 
     public OmdbService(RestClient.Builder restClientBuilder,
-            @Value("${app.omdb.api-key}") String apiKey,
-            @Value("${app.omdb.url}") String omdbUrl,
-            MovieSearchService movieSearchService) {
+                       @Value("${app.omdb.api-key}") String apiKey,
+                       @Value("${app.omdb.url}") String omdbUrl,
+                       MovieSearchService movieSearchService,
+                       MovieRepository movieRepository) {
         this.apiKey = apiKey;
         this.restClient = restClientBuilder.baseUrl(omdbUrl).build();
         this.movieSearchService = movieSearchService;
+        this.movieRepository = movieRepository;
     }
 
     public void fetchAndSaveFullDetailsAsync(List<OmdbMovieSummary> summaries) {
         if (summaries == null || summaries.isEmpty())
             return;
-        CompletableFuture.runAsync(() -> {
-            for (OmdbMovieSummary summary : summaries) {
-                try {
-                    // Skip if already in database (as getMovieById checks MySQL)
-                    var cachedMovie = movieSearchService.getMovieById(summary.getImdbID());
-                    if (cachedMovie.isPresent() && cachedMovie.get().getPlot() != null) {
-                        continue;
-                    }
-                    getMovieDetails(summary.getImdbID());
-                } catch (Exception e) {
-                    log.error("Failed async fetch for {}", summary.getImdbID(), e);
+
+        var semaphore = new Semaphore(25);
+
+        Thread.startVirtualThread(() -> {
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (OmdbMovieSummary summary : summaries) {
+                    executor.submit(() -> {
+                        try {
+                            semaphore.acquire();
+                            var cached = movieRepository.findById(summary.imdbID());
+                            if (cached.isPresent() && cached.get().getPlot() != null) {
+                                return;
+                            }
+                            getMovieDetails(summary.imdbID());
+                        } catch (Exception e) {
+                            log.error("Failed async fetch for {}", summary.imdbID(), e);
+                        } finally {
+                            semaphore.release();
+                        }
+                    });
                 }
             }
         });
     }
 
     public OmdbSearchResponse searchMovies(String title) {
-        log.info("Searching movies with title: {}", title);
         OmdbSearchResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .queryParam("apikey", apiKey)
@@ -57,65 +72,108 @@ public class OmdbService {
                 .retrieve()
                 .body(OmdbSearchResponse.class);
 
-        if (response != null && "True".equals(response.getResponse()) && response.getSearch() != null) {
-            fetchAndSaveFullDetailsAsync(response.getSearch());
+        if (response != null && response.response().equals("True") && response.search() != null) {
+            fetchAndSaveFullDetailsAsync(response.search());
         }
 
         return response;
     }
 
-    /**
-     * Fetch ALL pages of OMDb search results for a title (up to 15 pages = 150
-     * results).
-     * OMDb returns 10 results per page.
-     */
-    public Map<String, Object> searchAllMovies(String title) {
-        log.info("Searching ALL pages for title: {}", title);
+    public OmdbSearchResponse searchAllMovies(String title) {
+        List<Movie> localMovies = movieSearchService.searchMovies(title, 0, 1000).movies();
+        List<OmdbMovieSummary> localResults = localMovies.stream().map(m -> new OmdbMovieSummary(
+                        m.getTitle(),
+                        m.getYear(),
+                        m.getImdbId(),
+                        m.getType(),
+                        m.getPoster(),
+                        m.getGenre(),
+                        m.getAwards(),
+                        m.getImdbRating() != null ? m.getImdbRating() : null))
+                .collect(Collectors.toList());
+
+        if (localResults.size() >= 100) {
+            return new OmdbSearchResponse(
+                    localResults,
+                    String.valueOf(localResults.size()),
+                    "True"
+            );
+        }
+
         List<OmdbMovieSummary> allResults = new ArrayList<>();
         int totalResults = 0;
-        int maxPages = 15;
+        int maxPages = 100; // OMDb API limits pagination TODO: decrease to 25 when db is full
 
         for (int page = 1; page <= maxPages; page++) {
             final int currentPage = page;
-            OmdbSearchResponse response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .queryParam("apikey", apiKey)
-                            .queryParam("s", title)
-                            .queryParam("page", currentPage)
-                            .build())
-                    .retrieve()
-                    .body(OmdbSearchResponse.class);
-
-            if (response == null || !"True".equals(response.getResponse()) || response.getSearch() == null) {
+            OmdbSearchResponse response = null;
+            try {
+                response = restClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .queryParam("apikey", apiKey)
+                                .queryParam("s", title)
+                                .queryParam("page", currentPage)
+                                .build())
+                        .retrieve()
+                        .body(OmdbSearchResponse.class);
+            } catch (Exception e) {
                 break;
             }
 
-            if (page == 1 && response.getTotalResults() != null) {
+            if (response == null || !response.response().equals("True") || response.search() == null) {
+                break;
+            }
+
+            if (page == 1 && response.totalResults() != null) {
                 try {
-                    totalResults = Integer.parseInt(response.getTotalResults());
+                    totalResults = Integer.parseInt(response.totalResults());
                 } catch (NumberFormatException e) {
                     totalResults = 0;
                 }
             }
 
-            allResults.addAll(response.getSearch());
-            fetchAndSaveFullDetailsAsync(response.getSearch());
+            allResults.addAll(response.search());
+            fetchAndSaveFullDetailsAsync(response.search());
 
-            // Stop if we've fetched all available results
             if (allResults.size() >= totalResults) {
                 break;
             }
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("Search", allResults);
-        result.put("totalResults", String.valueOf(totalResults));
-        result.put("Response", allResults.isEmpty() ? "False" : "True");
-        return result;
+        Map<String, OmdbMovieSummary> mergedMap = new LinkedHashMap<>();
+
+        for (OmdbMovieSummary summary : localResults) {
+            mergedMap.put(summary.imdbID(), summary);
+        }
+
+        for (OmdbMovieSummary summary : allResults) {
+            String id = summary.imdbID();
+            if (mergedMap.containsKey(id)) {
+                OmdbMovieSummary localEquivalent = mergedMap.get(id);
+                summary = new OmdbMovieSummary(
+                        summary.title(),
+                        summary.year(),
+                        summary.imdbID(),
+                        summary.type(),
+                        summary.poster(),
+                        localEquivalent.genre() != null ? localEquivalent.genre() : summary.genre(),
+                        localEquivalent.awards() != null ? localEquivalent.awards() : summary.awards(),
+                        localEquivalent.imdbRating());
+            }
+            mergedMap.put(id, summary);
+        }
+
+        List<OmdbMovieSummary> mergedList = new ArrayList<>(mergedMap.values());
+        mergedList.sort(Comparator.comparing(OmdbMovieSummary::imdbRating, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        return new OmdbSearchResponse(
+                mergedList,
+                String.valueOf(mergedList.size()),
+                mergedList.isEmpty() ? "False" : "True"
+        );
     }
 
     public OmdbMovieDetails getMovieDetails(String imdbId) {
-        log.info("Fetching movie details for imdbID: {}", imdbId);
         OmdbMovieDetails movieDetails = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .queryParam("apikey", apiKey)

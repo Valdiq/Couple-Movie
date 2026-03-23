@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import vladyslav.stasyshyn.couple_movie.dto.SearchPageResponse;
+import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import vladyslav.stasyshyn.couple_movie.service.EmotionGenreService;
 import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
-
 import java.util.*;
 
 /**
@@ -31,7 +33,7 @@ public class MovieController {
      * Search for movies by title using the external OMDb API.
      */
     @GetMapping("/search")
-    public ResponseEntity<?> searchMovies(@RequestParam("title") String title) {
+    public ResponseEntity<OmdbSearchResponse> searchMovies(@RequestParam("title") String title) {
         return ResponseEntity.ok(omdbService.searchMovies(title));
     }
 
@@ -39,7 +41,7 @@ public class MovieController {
      * Search for ALL movies matching a title (multi-page OMDb fetch).
      */
     @GetMapping("/search-all")
-    public ResponseEntity<?> searchAllMovies(@RequestParam("title") String title) {
+    public ResponseEntity<OmdbSearchResponse> searchAllMovies(@RequestParam("title") String title) {
         return ResponseEntity.ok(omdbService.searchAllMovies(title));
     }
 
@@ -47,20 +49,31 @@ public class MovieController {
      * Advanced search using Elasticsearch for cached movies.
      */
     @GetMapping("/advanced-search")
-    public ResponseEntity<?> advancedSearch(@RequestParam("query") String query) {
-        return ResponseEntity.ok(movieSearchService.searchMovies(query));
+    public ResponseEntity<SearchPageResponse> advancedSearch(
+            @RequestParam("query") String query,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        return ResponseEntity.ok(movieSearchService.searchMovies(query, page, size));
+    }
+
+    /**
+     * Autocomplete suggestions using Elasticsearch for cached movies.
+     */
+    @GetMapping("/autocomplete")
+    public ResponseEntity<List<Movie>> autocomplete(@RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return ResponseEntity.ok(movieSearchService.autocomplete(query, limit));
     }
 
     /**
      * Search movies in Elasticsearch cache by one or more genres.
      */
     @GetMapping("/by-genres")
-    public ResponseEntity<?> getMoviesByGenres(@RequestParam("genres") List<String> genres) {
-        try {
-            return ResponseEntity.ok(movieSearchService.searchByGenres(genres));
-        } catch (Exception e) {
-            return ResponseEntity.ok(List.of());
-        }
+    public ResponseEntity<SearchPageResponse> getMoviesByGenres(
+            @RequestParam("genres") List<String> genres,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        return ResponseEntity.ok(movieSearchService.searchByGenres(genres, page, size));
     }
 
     /**
@@ -69,23 +82,11 @@ public class MovieController {
      * years old.
      */
     @GetMapping("/by-emotion")
-    public ResponseEntity<?> getMoviesByEmotion(@RequestParam("emotion") String emotion) {
-        if ("nostalgic".equalsIgnoreCase(emotion)) {
-            try {
-                return ResponseEntity.ok(movieSearchService.searchNostalgic());
-            } catch (Exception e) {
-                return ResponseEntity.ok(List.of());
-            }
+    public ResponseEntity<List<Movie>> getMoviesByEmotion(@RequestParam("emotion") String emotion) {
+        if (emotion.equalsIgnoreCase("nostalgic")) {
+            return ResponseEntity.ok(movieSearchService.searchNostalgic());
         }
-        List<String> genres = emotionGenreService.getGenresForEmotion(emotion);
-        if (genres.isEmpty()) {
-            return ResponseEntity.ok(List.of());
-        }
-        try {
-            return ResponseEntity.ok(movieSearchService.searchByGenres(genres));
-        } catch (Exception e) {
-            return ResponseEntity.ok(List.of());
-        }
+        return ResponseEntity.ok(movieSearchService.searchByGenres(emotionGenreService.getGenresForEmotion(emotion)));
     }
 
     /**
@@ -94,116 +95,39 @@ public class MovieController {
      * "nostalgic" is handled specially — its results are merged in.
      */
     @GetMapping("/by-emotions")
-    public ResponseEntity<?> getMoviesByEmotions(@RequestParam("emotions") List<String> emotions) {
-        try {
-            Set<String> allGenres = new LinkedHashSet<>();
-            boolean includeNostalgic = false;
-
-            for (String emotion : emotions) {
-                if ("nostalgic".equalsIgnoreCase(emotion.trim())) {
-                    includeNostalgic = true;
-                    continue;
-                }
-                List<String> genres = emotionGenreService.getGenresForEmotion(emotion.trim());
-                allGenres.addAll(genres);
-            }
-
-            Map<String, Object> seenIds = new LinkedHashMap<>();
-
-            if (!allGenres.isEmpty()) {
-                var genreResults = movieSearchService.searchByGenres(new ArrayList<>(allGenres));
-                for (var movie : genreResults) {
-                    seenIds.putIfAbsent(movie.getImdbId(), movie);
-                }
-            }
-
-            if (includeNostalgic) {
-                var nostalgicResults = movieSearchService.searchNostalgic();
-                for (var movie : nostalgicResults) {
-                    seenIds.putIfAbsent(movie.getImdbId(), movie);
-                }
-            }
-
-            return ResponseEntity.ok(new ArrayList<>(seenIds.values()));
-        } catch (Exception e) {
-            return ResponseEntity.ok(List.of());
-        }
+    public ResponseEntity<SearchPageResponse> getMoviesByEmotions(
+            @RequestParam("emotions") List<String> emotions,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        return ResponseEntity.ok(movieSearchService.filterMoviesAndEmotions(null, emotions, emotionGenreService, page, size, false));
     }
 
     /**
      * Filter movies combining genres and emotions.
      */
     @GetMapping("/filter")
-    public ResponseEntity<?> filterMovies(
+    public ResponseEntity<SearchPageResponse> filterMovies(
             @RequestParam(value = "genres", required = false) List<String> genres,
-            @RequestParam(value = "emotions", required = false) List<String> emotions) {
-        try {
-            boolean hasGenres = genres != null && !genres.isEmpty();
-            boolean hasEmotions = emotions != null && !emotions.isEmpty();
-
-            if (!hasGenres && !hasEmotions) {
-                return ResponseEntity.ok(List.of());
-            }
-
-            Set<String> emotionGenres = new HashSet<>();
-            boolean includeNostalgic = false;
-            boolean hasValidEmotionForGenres = false;
-
-            if (hasEmotions && emotions != null) {
-                boolean firstEmotion = true;
-                for (String emotion : emotions) {
-                    if ("nostalgic".equalsIgnoreCase(emotion.trim())) {
-                        includeNostalgic = true;
-                        continue;
-                    }
-                    List<String> currentEmotionGenres = emotionGenreService.getGenresForEmotion(emotion.trim());
-                    if (firstEmotion) {
-                        emotionGenres.addAll(currentEmotionGenres);
-                        firstEmotion = false;
-                        hasValidEmotionForGenres = true;
-                    } else {
-                        emotionGenres.retainAll(currentEmotionGenres);
-                    }
-                }
-            }
-
-            // If emotions were provided but resulted in an empty set of intersected genres
-            // (e.g. "Happy" and "Mysterious" have no overlapping genres), and they weren't
-            // JUST "nostalgic"
-            // Then the result should be empty.
-            if (hasValidEmotionForGenres && emotionGenres.isEmpty()) {
-                // Intersected emotions yielded no common genres
-                return ResponseEntity.ok(List.of());
-            }
-
-            return ResponseEntity
-                    .ok(movieSearchService.filterMovies(genres, new ArrayList<>(emotionGenres), includeNostalgic));
-        } catch (Exception e) {
-            return ResponseEntity.ok(List.of());
-        }
+            @RequestParam(value = "emotions", required = false) List<String> emotions,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "15") int size,
+            @RequestParam(value = "awarded", defaultValue = "false") boolean awarded) {
+        return ResponseEntity.ok(movieSearchService.filterMoviesAndEmotions(genres, emotions, emotionGenreService, page, size, awarded));
     }
 
     /**
      * Get detailed information about a specific movie.
      */
     @GetMapping("/{imdbId}")
-    public ResponseEntity<?> getMovieDetails(@PathVariable("imdbId") String imdbId) {
-        var cachedMovie = movieSearchService.getMovieById(imdbId);
-        if (cachedMovie.isPresent()) {
-            var movie = cachedMovie.get();
-            // A movie saved from batch searching might be missing full details
-            if (movie.getDirector() != null && movie.getPlot() != null && movie.getGenre() != null) {
-                return ResponseEntity.ok(movie);
-            }
-        }
-        return ResponseEntity.ok(omdbService.getMovieDetails(imdbId));
+    public ResponseEntity<Object> getMovieDetails(@PathVariable("imdbId") String imdbId) {
+        return ResponseEntity.ok(movieSearchService.getMovieDetails(imdbId, omdbService));
     }
 
     /**
      * Get a random movie from the database (Surprise Me feature).
      */
     @GetMapping("/random")
-    public ResponseEntity<?> getRandomMovie() {
+    public ResponseEntity<Movie> getRandomMovie() {
         var movie = movieSearchService.getRandomMovie();
         if (movie != null) {
             return ResponseEntity.ok(movie);
@@ -215,14 +139,7 @@ public class MovieController {
      * Batch fetch ratings from Elasticsearch cache for a list of IMDb IDs.
      */
     @PostMapping("/batch-ratings")
-    public ResponseEntity<?> batchRatings(@RequestBody Map<String, List<String>> body) {
-        List<String> ids = body.getOrDefault("ids", List.of());
-        Map<String, Object> ratings = new LinkedHashMap<>();
-        for (String id : ids) {
-            movieSearchService.getMovieById(id).ifPresent(doc -> {
-                ratings.put(id, doc.getImdbRating());
-            });
-        }
-        return ResponseEntity.ok(ratings);
+    public ResponseEntity<Map<String, Double>> batchRatings(@RequestBody Map<String, List<String>> body) {
+        return ResponseEntity.ok(movieSearchService.getBatchRatings(body));
     }
 }

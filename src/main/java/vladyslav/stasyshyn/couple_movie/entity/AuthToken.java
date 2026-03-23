@@ -1,4 +1,4 @@
-package vladyslav.stasyshyn.couple_movie.model;
+package vladyslav.stasyshyn.couple_movie.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -19,13 +18,14 @@ public class AuthToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "token", nullable = false, unique = true)
     private String token;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type", nullable = false)
     private TokenType type;
 
     @ManyToOne(fetch = FetchType.LAZY)

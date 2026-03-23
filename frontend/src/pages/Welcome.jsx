@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Film, Heart, Search, Sparkles, Star, Users, Zap, ArrowRight, Quote } from "lucide-react";
+import { Film, Heart, Search, Sparkles, Star, Users, ArrowRight, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [

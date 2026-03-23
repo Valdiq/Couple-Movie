@@ -2,6 +2,7 @@ package vladyslav.stasyshyn.couple_movie;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,197 +12,306 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
-import vladyslav.stasyshyn.couple_movie.dto.AuthenticationResponse;
-import vladyslav.stasyshyn.couple_movie.dto.RateMovieRequest;
+import jakarta.servlet.http.Cookie;
 import vladyslav.stasyshyn.couple_movie.dto.RegisterRequest;
-import vladyslav.stasyshyn.couple_movie.model.MovieStatus;
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
+import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
+import vladyslav.stasyshyn.couple_movie.service.EmailService;
+import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+import java.util.Objects;
+
+import vladyslav.stasyshyn.couple_movie.service.OmdbService;
+
+@SpringBootTest(properties = {
+        "DATASOURCE_URL=jdbc:postgresql://localhost:5433/couple_movie_test",
+        "DATASOURCE_USERNAME=test",
+        "DATASOURCE_PASSWORD=test",
+        "MAIL_USERNAME=test",
+        "MAIL_PASSWORD=test",
+        "GOOGLE_CLIENT_ID=test",
+        "GOOGLE_CLIENT_SECRET=test",
+        "MEILISEARCH_URL=http://localhost:7700",
+        "MEILISEARCH_API_KEY=testApiKey",
+        "JWT_SECRET=1234567890123456789012345678901212345678901234567890123456789012",
+        "JWT_EXPIRATION_MS=604800000",
+        "OMDB_API_KEY=testApiKey",
+        "OMDB_URL=http://www.omdbapi.com/",
+        "TMDB_API_KEY=testApiKey",
+        "AI_API_KEY=testApiKey"
+})
 @Testcontainers
 @AutoConfigureMockMvc
 class CoupleMovieApplicationTests {
 
-        @Container
-        @SuppressWarnings("resource")
-        static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-                        .withDatabaseName("couple_movie_test")
-                        .withUsername("test")
-                        .withPassword("test");
+    @MockBean
+    private MovieSearchService movieSearchService;
 
-        @Container
-        @SuppressWarnings("resource")
-        static GenericContainer<?> elasticsearch = new GenericContainer<>(
-                        "docker.elastic.co/elasticsearch/elasticsearch:7.17.10")
-                        .withEnv("discovery.type", "single-node")
-                        .withEnv("xpack.security.enabled", "false")
-                        .withExposedPorts(9200);
+    @MockBean
+    private OmdbService omdbService;
 
-        @DynamicPropertySource
-        static void configureProperties(DynamicPropertyRegistry registry) {
-                registry.add("spring.datasource.url", mysql::getJdbcUrl);
-                registry.add("spring.datasource.username", mysql::getUsername);
-                registry.add("spring.datasource.password", mysql::getPassword);
-                registry.add("spring.data.elasticsearch.client.reactive.endpoints",
-                                () -> elasticsearch.getHost() + ":" + elasticsearch.getMappedPort(9200));
+    @MockBean
+    private EmailService emailService;
+
+    @Autowired
+    private MovieRepository movieRepository;
+
+    @BeforeEach
+    void setUpMovies() {
+        if (movieRepository.findById("tt1375666").isEmpty()) {
+            movieRepository.save(Movie.builder()
+                    .imdbId("tt1375666")
+                    .title("Inception")
+                    .build());
         }
-
-        @Autowired
-        private MockMvc mockMvc;
-
-        @Autowired
-        private ObjectMapper objectMapper;
-
-        @Test
-        void contextLoads() {
-                Assertions.assertTrue(mysql.isRunning());
-                Assertions.assertTrue(elasticsearch.isRunning());
+        if (movieRepository.findById("tt0816692").isEmpty()) {
+            movieRepository.save(Movie.builder()
+                    .imdbId("tt0816692")
+                    .title("Interstellar")
+                    .build());
         }
+    }
 
-        @Test
-        void testAuthenticationController() throws Exception {
-                String email = "auth_test@example.com";
-                String password = "password123";
-                RegisterRequest registerRequest = new RegisterRequest();
-                registerRequest.setFirstName("Auth");
-                registerRequest.setLastName("Test");
-                registerRequest.setUsername("authtest");
-                registerRequest.setEmail(email);
-                registerRequest.setPassword(password);
+    @Container
+    @SuppressWarnings("resource")
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("couple_movie_test")
+            .withUsername("test")
+            .withPassword("test");
 
-                mockMvc.perform(post("/api/v1/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(registerRequest)))
-                                .andExpect(status().isOk());
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
 
-                AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
-                MvcResult authResult = mockMvc.perform(post("/api/v1/auth/authenticate")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(authRequest)))
-                                .andExpect(status().isOk())
-                                .andReturn();
+    @Autowired
+    private MockMvc mockMvc;
 
-                AuthenticationResponse authResponse = objectMapper.readValue(
-                                authResult.getResponse().getContentAsString(), AuthenticationResponse.class);
-                Assertions.assertNotNull(authResponse.getToken());
-        }
+    @Autowired
+    private ObjectMapper objectMapper;
 
-        @Test
-        void testMovieController() throws Exception {
-                mockMvc.perform(get("/api/v1/movies/search")
-                                .param("title", "Inception"))
-                                .andExpect(status().isOk());
+    @Test
+    void contextLoads() {
+        Assertions.assertTrue(postgres.isRunning());
+    }
 
-                mockMvc.perform(get("/api/v1/movies/tt1375666"))
-                                .andExpect(status().isOk());
+    @Test
+    void testAuthenticationController() throws Exception {
+        String email = "auth_test@example.com";
+        String password = "password123";
+        RegisterRequest registerRequest = RegisterRequest.builder()
+                .firstName("Auth")
+                .lastName("Test")
+                .username("authtest")
+                .email(email)
+                .password(password)
+                .build();
 
-                mockMvc.perform(get("/api/v1/movies/advanced-search")
-                                .param("query", "Inception"))
-                                .andExpect(status().isOk());
-        }
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects
+                                .requireNonNull(objectMapper.writeValueAsString(registerRequest))))
+                .andExpect(status().isOk());
 
-        @Test
-        void testUserMovieController() throws Exception {
-                String token = createAndAuthenticateUser("user_movie_test@example.com", "password123", "usermovie");
-                String imdbId = "tt1375666"; // Inception
+        AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
+        MvcResult authResult = mockMvc.perform(post("/api/v1/auth/authenticate")
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects
+                                .requireNonNull(objectMapper.writeValueAsString(authRequest))))
+                .andExpect(status().isOk())
+                .andReturn();
 
-                mockMvc.perform(post("/api/v1/user/movies/" + imdbId + "/status")
-                                .header("Authorization", "Bearer " + token)
-                                .param("status", MovieStatus.PLAN_TO_WATCH.name()))
-                                .andExpect(status().isOk());
+        Cookie jwtCookie = authResult.getResponse().getCookie("jwt");
+        Assertions.assertNotNull(jwtCookie);
+        Assertions.assertNotNull(jwtCookie.getValue());
+    }
 
-                RateMovieRequest rateRequest = new RateMovieRequest();
-                rateRequest.setRating(9);
-                rateRequest.setReview("Great movie!");
-                mockMvc.perform(post("/api/v1/user/movies/" + imdbId + "/rate")
-                                .header("Authorization", "Bearer " + token)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(rateRequest)))
-                                .andExpect(status().isOk());
+    @Test
+    void testMovieController() throws Exception {
+        mockMvc.perform(get("/api/v1/movies/search")
+                        .param("title", "Inception"))
+                .andExpect(status().isOk());
 
-                mockMvc.perform(get("/api/v1/user/movies/watchlist")
-                                .header("Authorization", "Bearer " + token))
-                                .andExpect(status().isOk());
-        }
+        mockMvc.perform(get("/api/v1/movies/tt1375666"))
+                .andExpect(status().isOk());
 
-        @Test
-        void testCoupleController() throws Exception {
-                String tokenA = createAndAuthenticateUser("userA@example.com", "passwordA", "userA");
-                String tokenB = createAndAuthenticateUser("userB@example.com", "passwordB", "userB");
+        mockMvc.perform(get("/api/v1/movies/advanced-search")
+                        .param("query", "Inception"))
+                .andExpect(status().isOk());
+    }
 
-                MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
-                                .header("Authorization", "Bearer " + tokenA)
-                                .param("username", "userB"))
-                                .andExpect(status().isOk())
-                                .andReturn();
+    @Test
+    void testCoupleController() throws Exception {
+        Cookie tokenA = createAndAuthenticateUser("user1@example.com", "passwordA", "user1");
+        Cookie tokenB = createAndAuthenticateUser("user2@example.com", "passwordB", "user2");
 
-                String inviteResponse = inviteResult.getResponse().getContentAsString();
-                long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
+                        .cookie(tokenA)
+                        .param("username", "user2"))
+                .andExpect(status().isOk())
+                .andReturn();
 
-                mockMvc.perform(get("/api/v1/couple/invites")
-                                .header("Authorization", "Bearer " + tokenB))
-                                .andExpect(status().isOk());
+        String inviteResponse = inviteResult.getResponse().getContentAsString();
+        long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
 
-                mockMvc.perform(post("/api/v1/couple/accept/" + requestId)
-                                .header("Authorization", "Bearer " + tokenB))
-                                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/couple/invites")
+                        .cookie(tokenB))
+                .andExpect(status().isOk());
 
-                mockMvc.perform(get("/api/v1/couple/partner")
-                                .header("Authorization", "Bearer " + tokenA))
-                                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/couple/accept/" + requestId)
+                        .cookie(tokenB))
+                .andExpect(status().isOk());
 
-                mockMvc.perform(get("/api/v1/user/movies/shared-watchlist")
-                                .header("Authorization", "Bearer " + tokenA))
-                                .andExpect(status().isOk());
-        }
+        mockMvc.perform(get("/api/v1/couple/partner")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
 
-        @Test
-        void testCoupleRejection() throws Exception {
-                String tokenC = createAndAuthenticateUser("userC@example.com", "passwordC", "userC");
-                String tokenD = createAndAuthenticateUser("userD@example.com", "passwordD", "userD");
+        mockMvc.perform(get("/api/v1/couple/movies")
+                        .cookie(tokenA))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
 
-                MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
-                                .header("Authorization", "Bearer " + tokenC)
-                                .param("username", "userD"))
-                                .andExpect(status().isOk())
-                                .andReturn();
+    @Test
+    void testCoupleRejection() throws Exception {
+        Cookie tokenC = createAndAuthenticateUser("userC@example.com", "passwordC", "userC");
+        Cookie tokenD = createAndAuthenticateUser("userD@example.com", "passwordD", "userD");
 
-                String inviteResponse = inviteResult.getResponse().getContentAsString();
-                long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
+                        .cookie(tokenC)
+                        .param("username", "userD"))
+                .andExpect(status().isOk())
+                .andReturn();
 
-                mockMvc.perform(post("/api/v1/couple/reject/" + requestId)
-                                .header("Authorization", "Bearer " + tokenD))
-                                .andExpect(status().isOk());
+        String inviteResponse = inviteResult.getResponse().getContentAsString();
+        long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
 
-                mockMvc.perform(get("/api/v1/couple/partner")
-                                .header("Authorization", "Bearer " + tokenC))
-                                .andExpect(status().isNotFound());
-        }
+        mockMvc.perform(post("/api/v1/couple/reject/" + requestId)
+                        .cookie(tokenD))
+                .andExpect(status().isOk());
 
-        private String createAndAuthenticateUser(String email, String password, String username) throws Exception {
-                RegisterRequest registerRequest = new RegisterRequest();
-                registerRequest.setFirstName("Test");
-                registerRequest.setLastName("User");
-                registerRequest.setUsername(username);
-                registerRequest.setEmail(email);
-                registerRequest.setPassword(password);
+        mockMvc.perform(get("/api/v1/couple/partner")
+                        .cookie(tokenC))
+                .andExpect(status().isNotFound());
+    }
 
-                MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(registerRequest)))
-                                .andExpect(status().isOk())
-                                .andReturn();
+    @Test
+    void testFavoritesFlow() throws Exception {
+        Cookie token = createAndAuthenticateUser("fav_tester@example.com", "password123", "favtester");
 
-                AuthenticationResponse authResponse = objectMapper.readValue(
-                                registerResult.getResponse().getContentAsString(), AuthenticationResponse.class);
-                return authResponse.getToken();
-        }
+        mockMvc.perform(post("/api/v1/favorites")
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/favorites")
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/favorites/tt1375666")
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull(
+                                "{\"watch_status\": \"WATCHED\", \"user_rating\": 4.5}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/favorites")
+                        .cookie(token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/favorites/tt1375666")
+                        .cookie(token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testCoupleSharedMoviesFlow() throws Exception {
+        Cookie tokenA = createAndAuthenticateUser("couple_test_A@example.com", "passwordA", "coupleA");
+        Cookie tokenB = createAndAuthenticateUser("couple_test_B@example.com", "passwordB", "coupleB");
+
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
+                        .cookie(tokenA)
+                        .param("username", "coupleB"))
+                .andExpect(status().isOk())
+                .andReturn();
+        long requestId = objectMapper.readTree(inviteResult.getResponse().getContentAsString()).get("id")
+                .asLong();
+        mockMvc.perform(post("/api/v1/couple/accept/" + requestId)
+                        .cookie(tokenB))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/couple/movies")
+                        .cookie(tokenA)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/couple/movies")
+                        .cookie(tokenB)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/couple/movies")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/couple/movies/tt0816692")
+                        .cookie(tokenB)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"watch_status\": \"WATCHLIST\"}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/couple/movies/tt0816692/rate")
+                        .cookie(tokenA)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"rating\": 4.0}")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/couple/movies/stats")
+                        .cookie(tokenB))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/couple/movies/tt0816692")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
+    }
+
+    private Cookie createAndAuthenticateUser(String email, String password, String username) throws Exception {
+        RegisterRequest registerRequest = RegisterRequest.builder()
+                .firstName("Test")
+                .lastName("User")
+                .username(username)
+                .email(email)
+                .password(password)
+                .build();
+
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects
+                                .requireNonNull(objectMapper.writeValueAsString(registerRequest))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie jwtCookie = registerResult.getResponse().getCookie("jwt");
+        Assertions.assertNotNull(jwtCookie);
+        return jwtCookie;
+    }
 }

@@ -4,13 +4,13 @@ import { User as UserEntity } from '@/entities/User';
 import { Couple } from '@/entities/Couple';
 import { coupleMovieService } from '@/services/coupleMovieService';
 import { useAuth } from '@/lib/AuthContext';
-import { Heart, Users, Send, UserPlus, Film, X, Check, Loader2, Star, Eye, BookmarkCheck, Trash2, Plus, Unlink } from 'lucide-react';
+import { Heart, Send, UserPlus, Film, X, Check, Loader2, Star, Eye, BookmarkCheck, Trash2, Plus, Award } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import MovieDetails from '../components/movie/MovieDetails';
 import Pagination from '../components/ui/Pagination';
 import { cn } from '@/lib/utils';
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 20;
 
 function StarRating({ rating, onChange, disabled, size = 'md', label }) {
   const [hover, setHover] = useState(null);
@@ -51,7 +51,7 @@ function StarRating({ rating, onChange, disabled, size = 'md', label }) {
 }
 
 export default function CouplePage() {
-  const { user: authUser, isLoading: isLoadingAuth } = useAuth();
+  const { user: authUser, isLoading: isLoadingAuth, removeCoupleMovieId } = useAuth();
   const [user, setUser] = useState(null);
   const [partner, setPartner] = useState(null);
   const [invites, setInvites] = useState([]);
@@ -61,7 +61,7 @@ export default function CouplePage() {
   const [message, setMessage] = useState(null);
   const [sharedMovies, setSharedMovies] = useState([]);
   const [stats, setStats] = useState({ matches: 0, watchlist: 0, watched: 0 });
-  const [activeTab, setActiveTab] = useState('watchlist');
+  const [activeTab, setActiveTab] = useState('matches');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMovies, setIsLoadingMovies] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
@@ -105,7 +105,7 @@ export default function CouplePage() {
       setMessage({ type: 'success', text: `Invitation sent to @${partnerUsername}!` });
       setPartnerUsername('');
     } catch (error) {
-      const errMsg = error.response?.data || error.message || 'Failed to send invitation';
+      const errMsg = error.response?.data?.error || error.response?.data?.message || error.response?.data || error.message || 'Failed to send invitation';
       setMessage({ type: 'error', text: typeof errMsg === 'string' ? errMsg : 'Failed to send invitation' });
     }
     setInviteSending(false);
@@ -122,28 +122,76 @@ export default function CouplePage() {
   };
 
   const handleRemoveFromShared = async (imdbId) => {
-    try { await coupleMovieService.remove(imdbId); setSharedMovies(prev => prev.filter(m => m.imdb_id !== imdbId)); loadSharedMovies(); }
-    catch (e) { }
+    const movieToDelete = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movieToDelete) return;
+
+    setSharedMovies(prev => prev.filter(m => m.imdbId !== imdbId));
+    setStats(prev => ({
+      ...prev,
+      matches: Math.max(0, prev.matches - (movieToDelete.isMatch ? 1 : 0)),
+      watchlist: Math.max(0, prev.watchlist - (movieToDelete.watchStatus === 'WATCHLIST' ? 1 : 0)),
+      watched: Math.max(0, prev.watched - (movieToDelete.watchStatus === 'WATCHED' ? 1 : 0))
+    }));
+    if (removeCoupleMovieId) removeCoupleMovieId(imdbId);
+
+    try { 
+      await coupleMovieService.remove(imdbId); 
+    } catch (e) { 
+      loadSharedMovies(); 
+    }
   };
 
   const handleUpdateWatchStatus = async (imdbId, newStatus) => {
+    const movie = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movie) return;
+
+    setSharedMovies(prev => prev.map(m => {
+      if (m.imdbId === imdbId) {
+        return { 
+          ...m, 
+          watchStatus: newStatus,
+          ...(newStatus === 'WATCHLIST' ? { yourRating: null } : {})
+        };
+      }
+      return m;
+    }));
+    setStats(prev => ({
+      ...prev,
+      watchlist: prev.watchlist + (newStatus === 'WATCHLIST' ? 1 : -1),
+      watched: prev.watched + (newStatus === 'WATCHED' ? 1 : -1)
+    }));
+
     try {
       await coupleMovieService.updateStatus(imdbId, { watch_status: newStatus });
-      setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, watch_status: newStatus } : m));
+    } catch (e) {
       loadSharedMovies();
-    } catch (e) { }
+    }
   };
 
   const handleCoupleRate = async (imdbId, rating) => {
+    const movie = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movie) return;
+    const wasWatchlist = movie.watchStatus === 'WATCHLIST';
+
+    // Optimistic UI Update
+    setSharedMovies(prev => prev.map(m => m.imdbId === imdbId ? { ...m, yourRating: rating, watchStatus: 'WATCHED' } : m));
+    if (wasWatchlist) {
+      setStats(prev => ({
+        ...prev,
+        watchlist: Math.max(0, prev.watchlist - 1),
+        watched: prev.watched + 1
+      }));
+    }
+
     try {
-      await coupleMovieService.rate(imdbId, rating);
-      setSharedMovies(prev => prev.map(m => m.imdb_id === imdbId ? { ...m, your_rating: rating, watch_status: 'WATCHED' } : m));
+      await coupleMovieService.updateStatus(imdbId, { rating, watch_status: 'WATCHED' });
+    } catch (e) {
       loadSharedMovies();
-    } catch (e) { }
+    }
   };
 
   const handleMovieSelect = (movie) => {
-    setSelectedMovie({ imdbID: movie.imdb_id, id: movie.imdb_id, title: movie.title, poster: movie.poster, year: movie.year, genre: movie.genre });
+    setSelectedMovie({ imdbID: movie.imdbId, id: movie.imdbId, title: movie.title, poster: movie.poster, year: movie.year, genre: movie.genre });
     setIsDetailsOpen(true);
   };
 
@@ -165,12 +213,12 @@ export default function CouplePage() {
 
   // PAIRED VIEW
   if (partner) {
-    const filteredMovies = activeTab === 'matches' ? sharedMovies.filter(m => m.is_match)
-      : activeTab === 'watched' ? sharedMovies.filter(m => m.watch_status === 'WATCHED')
-        : sharedMovies.filter(m => m.watch_status !== 'WATCHED');
+    const filteredMovies = activeTab === 'matches' ? sharedMovies.filter(m => m.isMatch)
+      : activeTab === 'watched' ? sharedMovies.filter(m => m.watchStatus === 'WATCHED')
+        : sharedMovies.filter(m => m.watchStatus !== 'WATCHED');
 
     return (
-      <div className="mx-auto max-w-5xl space-y-6 p-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="mb-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
             Couple <span className="gradient-text">Space</span>
@@ -226,7 +274,7 @@ export default function CouplePage() {
 
         {/* Tabs */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="flex gap-1 rounded-xl border border-border bg-card/50 p-1.5"
+          className="flex gap-1 rounded-xl border border-border bg-card/50 p-3"
         >
           {[
             { key: 'matches', label: 'Mutual Picks', icon: Heart, count: stats.matches },
@@ -249,17 +297,18 @@ export default function CouplePage() {
           <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filteredMovies.length > 0 ? (
           <div className="space-y-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((movie, index) => (
-                <motion.div key={movie.id || movie.imdb_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="group relative">
-                  <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.is_match && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((movie, index) => (
+                  <motion.div key={movie.id || movie.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
+                    <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.isMatch && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
                     <div className="relative aspect-[2/3] overflow-hidden">
                       {movie.poster && movie.poster !== 'N/A' ? (
-                        <img src={movie.poster} alt={movie.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={movie.poster} alt={movie.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-12 w-12 text-muted-foreground" /></div>
                       )}
-                      {movie.is_match && (
+                      {movie.isMatch && (
                         <div className="absolute left-3 top-3">
                           <Badge variant="default" className="bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 text-[10px] font-semibold shadow-lg gap-1">
                             <Heart className="h-3 w-3 fill-current" />Match
@@ -267,9 +316,29 @@ export default function CouplePage() {
                         </div>
                       )}
                       <button className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-destructive/80 group-hover:opacity-100"
-                        onClick={(e) => { e.stopPropagation(); handleRemoveFromShared(movie.imdb_id); }}>
+                        onClick={(e) => { e.stopPropagation(); handleRemoveFromShared(movie.imdbId); }}>
                         <Trash2 className="h-3 w-3" />
                       </button>
+
+                      {movie.imdbRating && movie.imdbRating !== "N/A" && (
+                        <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {movie.imdbRating}
+                        </div>
+                      )}
+                      {movie.awards && movie.awards !== "N/A" && (
+                        <div className="absolute bottom-2 right-2">
+                          {/\b(win|wins|won)\b/i.test(movie.awards) ? (
+                            <div title={movie.awards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                              <Award className="h-4 w-4 text-yellow-500 fill-yellow-500/20" />
+                            </div>
+                          ) : /\b(nomination|nominated|nominations)\b/i.test(movie.awards) ? (
+                            <div title={movie.awards} className="flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+                              <Award className="h-4 w-4 text-slate-300 fill-slate-300/20" />
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2 p-3">
                       <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{movie.title}</h3>
@@ -277,37 +346,38 @@ export default function CouplePage() {
 
                       {/* You / Partner badges */}
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.user_you_added ? 'bg-primary/20 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border'}`}>
-                          {movie.user_you_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}You
+                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.userYouAdded ? 'bg-primary/20 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border'}`}>
+                          {movie.userYouAdded ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}You
                         </Badge>
-                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.partner_added ? 'bg-accent/20 text-accent border-accent/30' : 'bg-secondary text-muted-foreground border-border'}`}>
-                          {movie.partner_added ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}Partner
+                        <Badge variant="outline" className={`text-[10px] py-0 ${movie.partnerAdded ? 'bg-accent/20 text-accent border-accent/30' : 'bg-secondary text-muted-foreground border-border'}`}>
+                          {movie.partnerAdded ? <Check className="mr-0.5 h-2.5 w-2.5" /> : <Plus className="mr-0.5 h-2.5 w-2.5" />}Partner
                         </Badge>
                       </div>
 
                       {/* Status button */}
                       <button
-                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${movie.watch_status === 'WATCHED'
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all ${movie.watchStatus === 'WATCHED'
                           ? 'border-green-500/30 bg-green-600/20 text-green-400 hover:bg-green-600/30'
                           : 'border-primary/30 bg-primary/20 text-primary hover:bg-primary/30'
                           }`}
-                        onClick={(e) => { e.stopPropagation(); handleUpdateWatchStatus(movie.imdb_id, movie.watch_status === 'WATCHED' ? 'WATCHLIST' : 'WATCHED'); }}
+                        onClick={(e) => { e.stopPropagation(); handleUpdateWatchStatus(movie.imdbId, movie.watchStatus === 'WATCHED' ? 'WATCHLIST' : 'WATCHED'); }}
                       >
-                        {movie.watch_status === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
+                        {movie.watchStatus === 'WATCHED' ? <><Eye className="h-3.5 w-3.5" /> ✓ Watched</> : <><Eye className="h-3.5 w-3.5" /> Mark as Watched</>}
                       </button>
 
                       {/* Dual ratings */}
-                      {movie.watch_status === 'WATCHED' && (
+                      {movie.watchStatus === 'WATCHED' && (
                         <div className="space-y-1.5 border-t border-border pt-1" onClick={(e) => e.stopPropagation()}>
-                          <StarRating rating={movie.your_rating} onChange={(r) => handleCoupleRate(movie.imdb_id, r)} disabled={false} size="sm" label="Your Rating:" />
-                          <StarRating rating={movie.partner_rating} onChange={() => { }} disabled={true} size="sm" label="Partner's Rating:" />
+                          <StarRating rating={movie.yourRating} onChange={(r) => handleCoupleRate(movie.imdbId, r)} disabled={false} size="sm" label="Your Rating:" />
+                          <StarRating rating={movie.partnerRating} onChange={() => { }} disabled={true} size="sm" label="Partner's Rating:" />
                         </div>
                       )}
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
             {filteredMovies.length > ITEMS_PER_PAGE && (
               <Pagination currentPage={currentPage} totalPages={Math.ceil(filteredMovies.length / ITEMS_PER_PAGE)} onPageChange={setCurrentPage} />
             )}

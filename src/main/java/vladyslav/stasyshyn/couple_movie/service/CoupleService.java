@@ -3,13 +3,14 @@ package vladyslav.stasyshyn.couple_movie.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vladyslav.stasyshyn.couple_movie.model.CoupleRequest;
+import vladyslav.stasyshyn.couple_movie.entity.CoupleRequest;
+import vladyslav.stasyshyn.couple_movie.entity.User;
 import vladyslav.stasyshyn.couple_movie.model.RequestStatus;
-import vladyslav.stasyshyn.couple_movie.model.User;
 import vladyslav.stasyshyn.couple_movie.repository.CoupleRequestRepository;
 import vladyslav.stasyshyn.couple_movie.repository.UserRepository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -49,7 +50,7 @@ public class CoupleService {
                 .status(RequestStatus.PENDING)
                 .build();
 
-        return coupleRequestRepository.save(request);
+        return coupleRequestRepository.save(Objects.requireNonNull(request));
     }
 
     @Transactional
@@ -66,7 +67,6 @@ public class CoupleService {
 
         User sender = request.getSender();
 
-        // Link partners
         sender.setPartnerId(receiver.getId());
         receiver.setPartnerId(sender.getId());
 
@@ -110,25 +110,15 @@ public class CoupleService {
         User partner = userRepository.findById(user.getPartnerId())
                 .orElseThrow(() -> new IllegalStateException("Partner not found."));
 
-        // Nullify partner IDs on both users
         user.setPartnerId(null);
         partner.setPartnerId(null);
         userRepository.save(user);
         userRepository.save(partner);
 
-        // Mark related ACCEPTED couple requests as BROKEN
-        List<CoupleRequest> sentRequests = coupleRequestRepository.findBySenderIdAndStatus(
-                user.getId(), RequestStatus.ACCEPTED);
-        for (CoupleRequest req : sentRequests) {
-            req.setStatus(RequestStatus.BROKEN);
-            coupleRequestRepository.save(req);
-        }
-
-        List<CoupleRequest> receivedRequests = coupleRequestRepository.findByReceiverEmailAndStatusIn(
-                user.getEmail(), List.of(RequestStatus.ACCEPTED));
-        for (CoupleRequest req : receivedRequests) {
-            req.setStatus(RequestStatus.BROKEN);
-            coupleRequestRepository.save(req);
-        }
+        coupleRequestRepository.findByUserAndStatus(user.getId(), user.getEmail(), RequestStatus.ACCEPTED)
+                .forEach(req -> {
+                    req.setStatus(RequestStatus.BROKEN);
+                    coupleRequestRepository.save(req);
+                });
     }
 }

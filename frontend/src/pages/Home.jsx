@@ -9,20 +9,21 @@ import MovieCard from "../components/movie/MovieCard";
 import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
 import AppleEmoji from "@/components/ui/AppleEmoji";
+import Pagination from "../components/ui/Pagination";
 
 const EMOTIONS = [
-  { name: "romantic", text: "Romantic", emoji: "💕" },
-  { name: "exciting", text: "Exciting", emoji: "⚡" },
-  { name: "happy", text: "Happy", emoji: "😊" },
-  { name: "cozy", text: "Cozy", emoji: "☕" },
-  { name: "thrilling", text: "Thrilling", emoji: "🎯" },
-  { name: "uplifting", text: "Uplifting", emoji: "☀️" },
-  { name: "nostalgic", text: "Nostalgic", emoji: "🧠" },
-  { name: "mysterious", text: "Mysterious", emoji: "🌙" },
-  { name: "adventurous", text: "Adventurous", emoji: "🚀" },
-  { name: "emotional", text: "Emotional", emoji: "💧" },
-  { name: "passionate", text: "Passionate", emoji: "🔥" },
-  { name: "inspiring", text: "Inspiring", emoji: "⭐" },
+  { name: "Romantic", text: "Romantic", emoji: "💕" },
+  { name: "Exciting", text: "Exciting", emoji: "⚡" },
+  { name: "Happy", text: "Happy", emoji: "😊" },
+  { name: "Cozy", text: "Cozy", emoji: "☕" },
+  { name: "Thrilling", text: "Thrilling", emoji: "🎯" },
+  { name: "Uplifting", text: "Uplifting", emoji: "☀️" },
+  { name: "Nostalgic", text: "Nostalgic", emoji: "🧠" },
+  { name: "Mysterious", text: "Mysterious", emoji: "🌙" },
+  { name: "Adventurous", text: "Adventurous", emoji: "🚀" },
+  { name: "Emotional", text: "Emotional", emoji: "💧" },
+  { name: "Passionate", text: "Passionate", emoji: "🔥" },
+  { name: "Inspiring", text: "Inspiring", emoji: "⭐" },
 ];
 
 export default function Home() {
@@ -32,33 +33,51 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
 
-  const getRecommendations = async (emotion) => {
+  const getRecommendations = async (emotion, pageNum = 1) => {
     setIsLoading(true);
     try {
-      const results = await Movie.getByEmotion(emotion);
+      const response = await Movie.filter([], [emotion], pageNum - 1, 20, false);
+      const results = response.movies || [];
+      const hits = response.totalHits || 0;
+      
       setMovies(results);
+      setTotalHits(hits);
     } catch (error) {
       setMovies([]);
+      setTotalHits(0);
     }
     setIsLoading(false);
   };
 
   const handleEmotionSelect = (emotion) => {
     setSelectedEmotion(emotion);
-    getRecommendations(emotion);
+    setCurrentPage(1);
+    getRecommendations(emotion, 1);
   };
 
   const handleCustomVibe = () => {
     if (customVibe.trim()) {
-      setSelectedEmotion(customVibe.trim());
-      getRecommendations(customVibe.trim());
+      const vibe = customVibe.trim();
+      setSelectedEmotion(vibe);
+      setCurrentPage(1);
+      getRecommendations(vibe, 1);
     }
   };
 
   const getRandomMovie = async () => {
     setIsLoading(true);
-    const randomMovie = await Movie.getRandom();
+    let randomMovie;
+
+    if (selectedEmotion && movies.length > 0) {
+      const randomIndex = Math.floor(Math.random() * movies.length);
+      randomMovie = movies[randomIndex];
+    } else {
+      randomMovie = await Movie.getRandom();
+    }
+
     if (randomMovie) {
       setSelectedMovie(randomMovie);
       setIsDetailsOpen(true);
@@ -70,15 +89,13 @@ export default function Home() {
     setSelectedEmotion(null);
     setMovies([]);
     setCustomVibe("");
+    setCurrentPage(1);
+    setTotalHits(0);
   };
 
-  const handleMovieSelect = async (movie) => {
+  const handleMovieSelect = (movie) => {
     setSelectedMovie(movie);
     setIsDetailsOpen(true);
-    if (movie.id) {
-      const fullDetails = await Movie.getDetails(movie.id);
-      if (fullDetails) setSelectedMovie(fullDetails);
-    }
   };
 
   return (
@@ -204,7 +221,7 @@ export default function Home() {
                 Perfect for: <span className="gradient-text">"{selectedEmotion}"</span>
               </h2>
               <p className="text-sm text-muted-foreground">
-                {movies.length} recommendations
+                {totalHits > 0 ? `${totalHits} recommendations` : `${movies.length} recommendations`}
               </p>
             </div>
           </div>
@@ -238,6 +255,19 @@ export default function Home() {
                 ))}
               </motion.div>
             </AnimatePresence>
+          )}
+
+          {totalHits > 20 && (
+            <div className="mt-8 flex justify-center pb-8 border-b-0">
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={Math.ceil(totalHits / 20)} 
+                onPageChange={(page) => {
+                  setCurrentPage(page);
+                  getRecommendations(selectedEmotion, page);
+                }} 
+              />
+            </div>
           )}
 
           {!isLoading && movies.length === 0 && (

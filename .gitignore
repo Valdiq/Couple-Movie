@@ -34,12 +34,9 @@ build/
 
 ### Local Config ###
 application-local.yml
+*.properties
 
 docker-compose.yml
-application.yml
-
-*.ps1
-*.log
 
 ### Node ###
 **/node_modules/

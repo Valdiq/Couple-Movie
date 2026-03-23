@@ -3,17 +3,18 @@ package vladyslav.stasyshyn.couple_movie.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
-import vladyslav.stasyshyn.couple_movie.dto.AuthenticationResponse;
 import jakarta.validation.Valid;
 import vladyslav.stasyshyn.couple_movie.dto.RegisterRequest;
-import vladyslav.stasyshyn.couple_movie.model.User;
-import vladyslav.stasyshyn.couple_movie.repository.UserRepository;
+import vladyslav.stasyshyn.couple_movie.dto.UpdatePasswordRequest;
+import vladyslav.stasyshyn.couple_movie.dto.UserProfileResponse;
+import vladyslav.stasyshyn.couple_movie.entity.User;
+import vladyslav.stasyshyn.couple_movie.dto.ResetPasswordTokenRequest;
+import vladyslav.stasyshyn.couple_movie.exception.UnauthorizedException;
 import vladyslav.stasyshyn.couple_movie.service.AuthenticationService;
-
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -25,179 +26,97 @@ import java.util.Map;
 public class AuthenticationController {
 
     private final AuthenticationService service;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(
-            @Valid @RequestBody RegisterRequest request) {
-        try {
-            return ResponseEntity.ok(service.register(request));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
+        String token = service.register(request);
+        setJwtCookie(response, token);
+        return ResponseEntity.ok(Map.of("message", "Registered successfully"));
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<?> authenticate(
-            @RequestBody AuthenticationRequest request) {
-        try {
-            return ResponseEntity.ok(service.authenticate(request));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, String>> authenticate(@RequestBody AuthenticationRequest request, HttpServletResponse response) {
+        String token = service.authenticate(request);
+        setJwtCookie(response, token);
+        return ResponseEntity.ok(Map.of("message", "Authenticated successfully"));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
+        clearJwtCookie(response);
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    private void setJwtCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie("jwt", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // set to true in production with HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(24 * 60 * 60); // 1 day
+        response.addCookie(cookie);
+    }
+
+    private void clearJwtCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie("jwt", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); 
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     /**
      * Get the currently authenticated user's profile.
      */
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
+    public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal User user) {
         if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+            throw new UnauthorizedException("Not authenticated");
         }
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", user.getId());
-        response.put("email", user.getEmail());
-        response.put("firstname", user.getFirstName() != null ? user.getFirstName() : "");
-        response.put("lastname", user.getLastName() != null ? user.getLastName() : "");
-        response.put("full_name", (user.getFirstName() != null ? user.getFirstName() : "") + " "
-                + (user.getLastName() != null ? user.getLastName() : ""));
-        response.put("role", user.getRole().name());
-        response.put("avatar_url", user.getAvatarUrl());
-        response.put("username", user.getDisplayUsername());
-        response.put("created_date", user.getCreatedDate() != null ? user.getCreatedDate().toString() : null);
-        response.put("is_verified", user.isVerified());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(UserProfileResponse.fromUser(user));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<?> updateProfile(@AuthenticationPrincipal User user,
-            @RequestBody Map<String, String> updates) {
+    public ResponseEntity<UserProfileResponse> updateProfile(@AuthenticationPrincipal User user, @RequestBody Map<String, String> request) {
         if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+            throw new UnauthorizedException("Not authenticated");
         }
-        if (updates.containsKey("avatar_url")) {
-            user.setAvatarUrl(updates.get("avatar_url"));
-        }
-        if (updates.containsKey("firstname")) {
-            user.setFirstName(updates.get("firstname"));
-        }
-        if (updates.containsKey("lastname")) {
-            user.setLastName(updates.get("lastname"));
-        }
-        if (updates.containsKey("username")) {
-            user.setDisplayUsername(updates.get("username"));
-        }
-        userRepository.save(user);
-        return getCurrentUser(user);
+        return ResponseEntity.ok(service.updateProfile(user, request));
     }
 
     /**
      * Reset password: requires current password verification + new password.
      */
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@AuthenticationPrincipal User user,
-            @RequestBody Map<String, String> body) {
+    @PostMapping("/update-password")
+    public ResponseEntity<Map<String, Object>> updatePassword(@AuthenticationPrincipal User user, @Valid @RequestBody UpdatePasswordRequest request) {
         if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+            throw new UnauthorizedException("Not authenticated");
         }
-
-        String currentPassword = body.get("currentPassword");
-        String newPassword = body.get("newPassword");
-
-        if (currentPassword == null || newPassword == null || newPassword.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Current password and new password are required"));
-        }
-
-        // Google-only users may not have a password set
-        if (user.getPassword() == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Cannot reset password for Google-only accounts"));
-        }
-
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Current password is incorrect"));
-        }
-
-        if (newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "New password must be at least 6 characters"));
-        }
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
+        service.updatePassword(user, request);
         return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<?> verifyEmail(@RequestBody Map<String, String> request) {
-        String token = request.get("token");
-        if (token == null || token.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Token is required"));
-        }
-        try {
-            service.verifyEmail(token);
-            return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestBody Map<String, String> request) {
+        service.verifyEmail(request);
+        return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
     }
 
     @PostMapping("/resend-verification")
-    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
-        }
-        try {
-            service.resendVerification(email);
-            return ResponseEntity.ok(Map.of("message", "Verification email sent"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, Object>> resendVerification(@RequestBody Map<String, String> request) {
+        service.resendVerification(request);
+        return ResponseEntity.ok(Map.of("message", "Verification email sent"));
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
-        }
-        try {
-            service.forgotPassword(email);
-            return ResponseEntity.ok(Map.of("message", "Password reset email sent"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> request) {
+        service.forgotPassword(request);
+        return ResponseEntity.ok(Map.of("message", "Password reset email sent"));
     }
 
-    @PostMapping("/reset-password-token")
-    public ResponseEntity<?> resetPasswordToken(@RequestBody Map<String, String> request) {
-        String token = request.get("token");
-        String newPassword = request.get("newPassword");
-
-        if (token == null || token.isBlank() || newPassword == null || newPassword.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Token and new password are required"));
-        }
-
-        if (newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
-        }
-
-        try {
-            service.resetPassword(token, newPassword);
-            return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationExceptions(
-            org.springframework.web.bind.MethodArgumentNotValidException ex) {
-        String errorMessage = "Validation failed";
-        if (ex.getBindingResult().hasErrors()) {
-            errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        }
-        return ResponseEntity.badRequest().body(Map.of("error", errorMessage));
+    @PostMapping("/forgot-password-token")
+    public ResponseEntity<Map<String, Object>> forgotPasswordToken(@Valid @RequestBody ResetPasswordTokenRequest request) {
+        service.forgotPasswordToken(request);
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
     }
 }

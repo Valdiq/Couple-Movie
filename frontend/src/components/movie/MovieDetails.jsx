@@ -1,25 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Film, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
-import { User as UserEntity } from "@/entities/User";
+import { useAuth } from "@/lib/AuthContext";
 import { Movie } from "@/entities/Movie";
 import { coupleMovieService } from "@/services/coupleMovieService";
+import AppleEmoji from "@/components/ui/AppleEmoji";
 
 export default function MovieDetails({ movie, isOpen, onClose }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, userFavorites, addFavoriteId, removeFavoriteId, myCoupleMovieIds, addCoupleMovieId } = useAuth();
   const [fullMovie, setFullMovie] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [addingToCouple, setAddingToCouple] = useState(false);
   const [coupleMessage, setCoupleMessage] = useState(null);
   const [isInCoupleList, setIsInCoupleList] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  // Track whether the user has already clicked a couple-list action for this open session
+  // so background API checks don't overwrite optimistic updates
+  const coupleActionTakenRef = useRef(false);
 
   const displayMovie = fullMovie || movie;
-  const movieImdbId = displayMovie?.id || displayMovie?.imdbID || displayMovie?.imdb_id || '';
+  // Derive the IMDB ID from the stable movie prop, NOT displayMovie.
+  // This prevents re-triggering the effect when fullMovie loads.
+  const movieImdbId = movie?.id || movie?.imdbID || movie?.imdb_id || '';
 
   useEffect(() => {
     if (!movie || !isOpen) {
@@ -27,51 +32,58 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       return;
     }
 
-    const fetchAll = async () => {
-      setIsLoadingDetails(true);
+    // Reset action flag for this new open session
+    coupleActionTakenRef.current = false;
+
+    // Fast init from the passed down movie object (especially useful in lists)
+    setIsFavorite(movie.is_favorite === true);
+    setIsInCoupleList(movie.in_couple_list === true);
+    setCoupleMessage(null);
+    setImgError(false);
+
+    const imdbId = movie?.id || movie?.imdbID || movie?.imdb_id || '';
+    let cancelled = false;
+
+    if (user && imdbId) {
+      setIsFavorite(userFavorites.includes(imdbId));
+      if (!coupleActionTakenRef.current) {
+        const inCoupleStr = myCoupleMovieIds.includes(imdbId);
+        setIsInCoupleList(inCoupleStr);
+        if (movie) movie.in_couple_list = inCoupleStr;
+      }
+    } else {
       setIsFavorite(false);
-      setCoupleMessage(null);
+      setIsInCoupleList(false);
+    }
 
-      try {
-        const currentUser = await UserEntity.me();
-        setUser(currentUser);
-        if (currentUser && movieImdbId) {
-          const fav = await UserFavorite.check(movieImdbId);
-          setIsFavorite(!!fav);
-
-          if (currentUser.partner_id) {
-            const coupleCheck = await coupleMovieService.check(movieImdbId);
-            setIsInCoupleList(coupleCheck.in_list);
-          } else {
-            setIsInCoupleList(false);
-          }
-        }
-      } catch (error) {
-        setUser(null);
-        setIsInCoupleList(false);
-      }
-
-      if (movieImdbId) {
+    const fetchDetails = async () => {
+      if (imdbId) {
+        setIsLoadingDetails(true);
         try {
-          const fullDetails = await Movie.getDetails(movieImdbId);
-          if (fullDetails) setFullMovie(fullDetails);
+          const fullDetails = await Movie.getDetails(imdbId);
+          if (!cancelled && fullDetails) setFullMovie(fullDetails);
         } catch (e) { }
+        if (!cancelled) setIsLoadingDetails(false);
       }
-      setIsLoadingDetails(false);
     };
 
-    fetchAll();
+    fetchDetails();
+
+    return () => { cancelled = true; };
   }, [movie, isOpen]);
 
   const handleFavorite = async () => {
     if (!user) { window.location.href = '/login'; return; }
     if (!movieImdbId) return;
 
-    setIsLoading(true);
+    const previousState = isFavorite;
+    // Optimistic UI update
+    setIsFavorite(!isFavorite);
+
     try {
-      if (isFavorite) {
+      if (previousState) {
         await UserFavorite.remove(movieImdbId);
-        setIsFavorite(false);
+        removeFavoriteId(movieImdbId);
       } else {
         await UserFavorite.add({
           imdb_id: movieImdbId,
@@ -80,30 +92,44 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           year: displayMovie.year || '',
           genre: displayMovie.genre || ''
         });
-        setIsFavorite(true);
+        addFavoriteId(movieImdbId);
       }
-    } catch (error) { }
-    setIsLoading(false);
+      // Update the local movie object to cache the value so closing and reopening keeps it
+      if (movie) {
+        movie.is_favorite = !previousState;
+      }
+    } catch (error) {
+      // Revert on error
+      setIsFavorite(previousState);
+    }
   };
 
   const handleAddToCouple = async () => {
     if (!user) return;
-    setAddingToCouple(true);
+
+    // Mark that the user has taken an action so background checks don't revert us
+    coupleActionTakenRef.current = true;
+    // Optimistic UI update
+    setIsInCoupleList(true);
     setCoupleMessage(null);
+
     try {
       await coupleMovieService.add({
-        imdb_id: movieImdbId,
-        title: displayMovie.title || '',
-        poster: displayMovie.poster || '',
-        year: displayMovie.year || '',
-        genre: displayMovie.genre || ''
+        imdb_id: movieImdbId
       });
-      setIsInCoupleList(true);
+      addCoupleMovieId(movieImdbId);
       setCoupleMessage({ type: 'success', text: 'Added to Couple Watchlist!' });
+
+      // Update local movie object so reopening the modal keeps the correct status
+      if (movie) {
+        movie.in_couple_list = true;
+      }
     } catch (error) {
-      setCoupleMessage({ type: 'error', text: 'Failed to add to couple list' });
+      coupleActionTakenRef.current = false;
+      setIsInCoupleList(false);
+      const msg = error.response?.status === 400 ? 'Create a Couple Space first!' : 'Failed to add to couple list';
+      setCoupleMessage({ type: 'error', text: msg });
     }
-    setAddingToCouple(false);
   };
 
   if (!movie) return null;
@@ -135,12 +161,12 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
             className="bg-card text-foreground rounded-2xl border border-border max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative">
-              <div className="absolute top-0 left-0 w-full h-1/2">
-                {displayMovie.poster && displayMovie.poster !== 'N/A' && (
-                  <img src={displayMovie.poster} alt="" className="w-full h-full object-cover opacity-10 blur-lg" />
+            <div className="relative bg-card">
+              <div className="absolute top-0 left-0 w-full h-[80%] overflow-hidden rounded-t-2xl">
+                {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' && (
+                  <img src={displayMovie.poster} alt="" loading="lazy" className="w-full h-full object-cover opacity-10 blur-xl scale-110" onError={() => setImgError(true)} />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-card/50 via-card to-card" />
+                <div className="absolute inset-0 bg-gradient-to-b from-card/30 via-card/80 to-card" />
               </div>
 
               <button
@@ -152,15 +178,22 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
 
               <div className="relative flex flex-col lg:flex-row gap-8 p-8">
                 <div className="lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
-                  {displayMovie.poster && displayMovie.poster !== 'N/A' ? (
+                  {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' ? (
                     <img
                       src={displayMovie.poster}
                       alt={displayMovie.title}
+                      loading="lazy"
                       className="w-full rounded-xl shadow-2xl shadow-black/40"
+                      onError={() => setImgError(true)}
                     />
                   ) : (
-                    <div className="w-full aspect-[2/3] bg-secondary rounded-xl flex items-center justify-center border border-border">
-                      <Film className="w-24 h-24 text-muted-foreground" />
+                    <div className="w-full aspect-[2/3] bg-secondary rounded-xl flex flex-col items-center justify-center border border-border gap-4 p-4 text-center">
+                      <div className="text-7xl">
+                        <AppleEmoji emoji="🍿" />
+                      </div>
+                      <span className="text-lg font-medium text-muted-foreground">
+                        {displayMovie.title || "Movie"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -184,11 +217,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                           {displayMovie.runtime}
                         </div>
                       )}
-                      {displayMovie.rated && displayMovie.rated !== 'N/A' && (
-                        <Badge variant="secondary" className="text-muted-foreground">
-                          {displayMovie.rated}
-                        </Badge>
-                      )}
+
                       {displayMovie.type && (
                         <div className="flex items-center gap-2 capitalize">
                           {displayMovie.type === 'series' ? <Tv className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -210,10 +239,16 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                           )}
                         </div>
                       )}
-                      {displayMovie.metascore && displayMovie.metascore !== 'N/A' && (
-                        <Badge className="bg-green-900/50 text-green-300 border-green-700/50">
-                          Metascore: {displayMovie.metascore}
-                        </Badge>
+
+                      {displayMovie.awards && displayMovie.awards !== 'N/A' && (
+                        <div className="flex items-center gap-2 border-l border-border pl-6">
+                          {/\b(win|wins|won)\b/i.test(displayMovie.awards) ? (
+                            <Award className="w-5 h-5 text-yellow-500 fill-yellow-500/20" />
+                          ) : /\b(nomination|nominated|nominations)\b/i.test(displayMovie.awards) ? (
+                            <Award className="w-5 h-5 text-slate-300 fill-slate-300/20" />
+                          ) : <Award className="w-5 h-5 text-muted-foreground" />}
+                          <span className="text-muted-foreground text-sm">{displayMovie.awards}</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -221,7 +256,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
               </div>
             </div>
 
-            <div className="px-8 pb-8 space-y-8 -mt-4">
+            <div className="relative px-8 pb-8 space-y-8 mt-4 bg-card">
               {displayMovie.plot && displayMovie.plot !== 'N/A' && (
                 <p className="text-muted-foreground text-base leading-relaxed max-w-3xl">
                   {displayMovie.plot}
@@ -240,12 +275,10 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                 {user && (
                   <button
                     onClick={handleAddToCouple}
-                    disabled={addingToCouple || isInCoupleList}
+                    disabled={isInCoupleList}
                     className="flex-1 min-w-[200px] flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium hover:bg-primary/10 hover:border-primary/50 text-foreground disabled:opacity-50"
                   >
-                    {addingToCouple ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : isInCoupleList ? (
+                    {isInCoupleList ? (
                       <Users className="w-4 h-4 mr-2 text-primary" />
                     ) : (
                       <PlusCircle className="w-4 h-4 mr-2 text-primary" />
