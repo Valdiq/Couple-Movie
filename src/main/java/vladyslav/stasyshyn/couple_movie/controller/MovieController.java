@@ -52,7 +52,7 @@ public class MovieController {
     public ResponseEntity<SearchPageResponse> advancedSearch(
             @RequestParam("query") String query,
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "15") int size) {
+            @RequestParam(value = "size", defaultValue = "20") int size) {
         return ResponseEntity.ok(movieSearchService.searchMovies(query, page, size));
     }
 
@@ -72,7 +72,7 @@ public class MovieController {
     public ResponseEntity<SearchPageResponse> getMoviesByGenres(
             @RequestParam("genres") List<String> genres,
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "15") int size) {
+            @RequestParam(value = "size", defaultValue = "20") int size) {
         return ResponseEntity.ok(movieSearchService.searchByGenres(genres, page, size));
     }
 
@@ -98,7 +98,7 @@ public class MovieController {
     public ResponseEntity<SearchPageResponse> getMoviesByEmotions(
             @RequestParam("emotions") List<String> emotions,
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "15") int size) {
+            @RequestParam(value = "size", defaultValue = "20") int size) {
         return ResponseEntity.ok(movieSearchService.filterMoviesAndEmotions(null, emotions, emotionGenreService, page, size, false));
     }
 

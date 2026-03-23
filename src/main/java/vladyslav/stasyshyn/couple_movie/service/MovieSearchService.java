@@ -7,7 +7,10 @@ import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.model.MatchingStrategy;
 import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Settings;
+import com.meilisearch.sdk.model.Pagination;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,24 +54,30 @@ public class MovieSearchService {
                 "into", "over", "after", "is", "are", "was", "were"
         });
 
+        Pagination pagination = new Pagination();
+        pagination.setMaxTotalHits(10000);
+        settings.setPagination(pagination);
+
         index.updateSettings(settings);
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void syncDatabaseToMeilisearch() {
         try {
-            List<Movie> allMovies = movieRepository.findAll();
-            if (allMovies.isEmpty()) {
-                return;
-            }
+            Index index = meilisearchClient.index(INDEX_NAME);
+            index.deleteAllDocuments();
 
             int batchSize = 1000;
-            Index index = meilisearchClient.index(INDEX_NAME);
+            int pageNumber = 0;
+            Page<Movie> page;
 
-            for (int i = 0; i < allMovies.size(); i += batchSize) {
-                List<Movie> batch = allMovies.subList(i, Math.min(i + batchSize, allMovies.size()));
+            do {
+                page = movieRepository.findAll(
+                        PageRequest.of(pageNumber, batchSize));
 
-                List<MovieDocument> documents = batch.stream().map(m -> {
+                if (page.isEmpty()) break;
+
+                List<MovieDocument> documents = page.getContent().stream().map(m -> {
                     List<String> genreList = new ArrayList<>();
                     if (m.getGenre() != null && !m.getGenre().isEmpty() && !m.getGenre().equals("N/A")) {
                         genreList = Arrays.stream(m.getGenre().split(","))
@@ -94,7 +103,8 @@ public class MovieSearchService {
 
                 String jsonDocs = objectMapper.writeValueAsString(documents);
                 index.addDocuments(jsonDocs, "imdbID");
-            }
+                pageNumber++;
+            } while (page.hasNext());
 
         } catch (Exception e) {
             log.error("Failed to sync historical PostgreSQL movies to Meilisearch on startup.", e);

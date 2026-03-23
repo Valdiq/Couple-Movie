@@ -22,4 +22,6 @@ public interface UserFavoriteRepository extends JpaRepository<UserFavorite, Long
 
     @Query(nativeQuery = true)
     List<FavoriteWithDetails> findByUserWithDetails(@Param("userId") Long userId);
+
+    List<String> findImdbIdsByUser(@Param("user") User user);
 }

@@ -1,9 +1,5 @@
 import { movieService } from '../services/movieService';
 
-/**
- * Maps OMDb API response fields (capitalized via @JsonProperty) to the
- * frontend's camelCase/snake_case format used by MovieCard and MovieDetails.
- */
 const mapOmdbToFrontend = (m) => ({
     id: m.imdbID || m.imdbId || m.imdbid,
     title: m.Title || m.title,
@@ -32,16 +28,7 @@ export const Movie = {
             const response = await movieService.searchAll(title);
             const searchResults = response?.Search || response?.search || [];
             if (Array.isArray(searchResults)) {
-                return searchResults.map(m => ({
-                    id: m.imdbID || m.imdbid,
-                    title: m.Title || m.title,
-                    poster: m.Poster || m.poster,
-                    year: m.Year || m.year,
-                    type: m.Type || m.type,
-                    genre: m.Genre || m.genre,
-                    awards: m.Awards || m.awards,
-                    imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
-                }));
+                return searchResults.map(mapOmdbToFrontend);
             }
             return [];
         } catch (e) {
@@ -49,7 +36,7 @@ export const Movie = {
             return [];
         }
     },
-    advancedSearch: async (query, page = 0, size = 15) => {
+    advancedSearch: async (query, page = 0, size = 20) => {
         try {
             const response = await movieService.advancedSearch(query, page, size);
             const movies = (response.movies || []).map(mapOmdbToFrontend);
@@ -63,16 +50,7 @@ export const Movie = {
         try {
             const results = await movieService.autocomplete(query, limit);
             if (Array.isArray(results)) {
-                return results.map(m => ({
-                    id: m.imdbId || m.imdbID,
-                    title: m.title,
-                    poster: m.poster,
-                    year: m.year,
-                    type: m.type,
-                    genre: m.genre,
-                    awards: m.Awards || m.awards,
-                    imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
-                }));
+                return results.map(mapOmdbToFrontend);
             }
             return [];
         } catch (e) {
@@ -101,7 +79,7 @@ export const Movie = {
             return null;
         }
     },
-    searchByGenres: async (genres, page = 0, size = 15) => {
+    searchByGenres: async (genres, page = 0, size = 20) => {
         try {
             const response = await movieService.searchByGenres(genres, page, size);
             const movies = (response.movies || []).map(mapOmdbToFrontend);
@@ -115,17 +93,7 @@ export const Movie = {
         try {
             const results = await movieService.getByEmotion(emotion);
             if (Array.isArray(results)) {
-                return results.map(m => ({
-                    id: m.imdbID || m.imdbId,
-                    title: m.title,
-                    poster: m.poster,
-                    year: m.year,
-                    type: m.type,
-                    genre: m.genre,
-                    director: m.director,
-                    plot: m.plot,
-                    imdb_rating: m.imdbRating,
-                }));
+                return results.map(mapOmdbToFrontend);
             }
             return [];
         } catch (e) {
@@ -137,17 +105,7 @@ export const Movie = {
         try {
             const results = await movieService.getByEmotions(emotions);
             if (Array.isArray(results)) {
-                return results.map(m => ({
-                    id: m.imdbID || m.imdbId,
-                    title: m.title,
-                    poster: m.poster,
-                    year: m.year,
-                    type: m.type,
-                    genre: m.genre,
-                    director: m.director,
-                    plot: m.plot,
-                    imdb_rating: m.imdbRating,
-                }));
+                return results.map(mapOmdbToFrontend);
             }
             return [];
         } catch (e) {
@@ -155,7 +113,7 @@ export const Movie = {
             return [];
         }
     },
-    filter: async (genres, emotions, page = 0, size = 15, awarded = false) => {
+    filter: async (genres, emotions, page = 0, size = 20, awarded = false) => {
         try {
             const response = await movieService.filter(genres, emotions, page, size, awarded);
             const movies = (response.movies || []).map(mapOmdbToFrontend);

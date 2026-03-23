@@ -31,7 +31,7 @@ public class AuthenticationService {
     private final EmailService emailService;
 
     @Transactional
-    public AuthenticationResponse register(RegisterRequest request) {
+    public String register(RegisterRequest request) {
         if (repository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("Email is already registered");
         }
@@ -61,14 +61,11 @@ public class AuthenticationService {
 
         emailService.sendVerificationEmail(user.getEmail(), verifyToken);
 
-        var jwtToken = jwtService.generateToken(user);
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .build();
+        return jwtService.generateToken(user);
     }
 
     @Transactional(readOnly = true)
-    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+    public String authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.email(),
@@ -76,10 +73,7 @@ public class AuthenticationService {
         var user = repository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException(
                         "Invalid email or password"));
-        var jwtToken = jwtService.generateToken(user);
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .build();
+        return jwtService.generateToken(user);
     }
 
     @Transactional

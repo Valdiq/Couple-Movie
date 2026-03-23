@@ -12,7 +12,7 @@ import ChatWidget from "../components/chat/ChatWidget";
 import Pagination from "../components/ui/Pagination";
 import AppleEmoji from "@/components/ui/AppleEmoji";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 20;
 
 const availableGenres = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
 
@@ -37,7 +37,6 @@ export default function Search() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalHits, setTotalHits] = useState(0);
-  const [ratings, setRatings] = useState({});
   const [showFilters, setShowFilters] = useState(false);
 
   const [hasSearched, setHasSearched] = useState(false);
@@ -64,13 +63,6 @@ export default function Search() {
       const { movies: pageMovies, totalHits: hits } = await Movie.filter(genres, emotions, page - 1, ITEMS_PER_PAGE, awarded);
       setFilteredMovies(pageMovies);
       setTotalHits(hits);
-      if (pageMovies.length > 0) {
-        const ids = pageMovies.map(m => m.id).filter(Boolean);
-        if (ids.length > 0) {
-          const ratingsMap = await Movie.batchRatings(ids);
-          setRatings(ratingsMap || {});
-        }
-      }
     } catch (error) {
       console.error(error);
     }
@@ -81,13 +73,6 @@ export default function Search() {
     const { movies: pageMovies, totalHits: hits } = await Movie.advancedSearch(query, page - 1, ITEMS_PER_PAGE);
     setFilteredMovies(pageMovies);
     setTotalHits(hits);
-    if (pageMovies.length > 0) {
-      const ids = pageMovies.map(m => m.id).filter(Boolean);
-      if (ids.length > 0) {
-        const ratingsMap = await Movie.batchRatings(ids);
-        setRatings(ratingsMap || {});
-      }
-    }
   };
 
   const handleSearch = async (e) => {
@@ -171,7 +156,7 @@ export default function Search() {
   };
 
   const handleMovieSelect = (movie) => {
-    setSelectedMovie({ ...movie, imdb_rating: movie.imdb_rating || ratings[movie.id] || null });
+    setSelectedMovie({ ...movie, imdb_rating: movie.imdb_rating || null });
     setIsDetailsOpen(true);
   };
 
@@ -186,7 +171,6 @@ export default function Search() {
   }, []);
 
   const totalPages = Math.ceil(totalHits / ITEMS_PER_PAGE);
-  const moviesWithRatings = filteredMovies.map(m => ({ ...m, imdb_rating: m.imdb_rating || ratings[m.id] || null }));
   const activeFiltersCount = selectedGenres.length + selectedEmotions.length + (showAwardedOnly ? 1 : 0);
 
   return (
@@ -407,7 +391,7 @@ export default function Search() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
               >
-                {moviesWithRatings.map((movie, index) => (
+                {filteredMovies.map((movie, index) => (
                   <motion.div key={`${movie.id || movie.imdb_id || 'movie'}-${index}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
                     <MovieCard movie={movie} onSelect={handleMovieSelect} />
                   </motion.div>

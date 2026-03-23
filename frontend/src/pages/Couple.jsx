@@ -10,7 +10,7 @@ import MovieDetails from '../components/movie/MovieDetails';
 import Pagination from '../components/ui/Pagination';
 import { cn } from '@/lib/utils';
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 20;
 
 function StarRating({ rating, onChange, disabled, size = 'md', label }) {
   const [hover, setHover] = useState(null);
@@ -51,7 +51,7 @@ function StarRating({ rating, onChange, disabled, size = 'md', label }) {
 }
 
 export default function CouplePage() {
-  const { user: authUser, isLoading: isLoadingAuth } = useAuth();
+  const { user: authUser, isLoading: isLoadingAuth, removeCoupleMovieId } = useAuth();
   const [user, setUser] = useState(null);
   const [partner, setPartner] = useState(null);
   const [invites, setInvites] = useState([]);
@@ -61,7 +61,7 @@ export default function CouplePage() {
   const [message, setMessage] = useState(null);
   const [sharedMovies, setSharedMovies] = useState([]);
   const [stats, setStats] = useState({ matches: 0, watchlist: 0, watched: 0 });
-  const [activeTab, setActiveTab] = useState('watchlist');
+  const [activeTab, setActiveTab] = useState('matches');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMovies, setIsLoadingMovies] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
@@ -122,28 +122,71 @@ export default function CouplePage() {
   };
 
   const handleRemoveFromShared = async (imdbId) => {
-    try { await coupleMovieService.remove(imdbId); setSharedMovies(prev => prev.filter(m => m.imdbId !== imdbId)); loadSharedMovies(); }
-    catch (e) { }
+    const movieToDelete = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movieToDelete) return;
+
+    setSharedMovies(prev => prev.filter(m => m.imdbId !== imdbId));
+    setStats(prev => ({
+      ...prev,
+      matches: Math.max(0, prev.matches - (movieToDelete.isMatch ? 1 : 0)),
+      watchlist: Math.max(0, prev.watchlist - (movieToDelete.watchStatus === 'WATCHLIST' ? 1 : 0)),
+      watched: Math.max(0, prev.watched - (movieToDelete.watchStatus === 'WATCHED' ? 1 : 0))
+    }));
+    if (removeCoupleMovieId) removeCoupleMovieId(imdbId);
+
+    try { 
+      await coupleMovieService.remove(imdbId); 
+    } catch (e) { 
+      loadSharedMovies(); 
+    }
   };
 
   const handleUpdateWatchStatus = async (imdbId, newStatus) => {
-    // Optimistic UI update
-    setSharedMovies(prev => prev.map(m => m.imdbId === imdbId ? { ...m, watchStatus: newStatus } : m));
+    const movie = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movie) return;
+
+    setSharedMovies(prev => prev.map(m => {
+      if (m.imdbId === imdbId) {
+        return { 
+          ...m, 
+          watchStatus: newStatus,
+          ...(newStatus === 'WATCHLIST' ? { yourRating: null } : {})
+        };
+      }
+      return m;
+    }));
+    setStats(prev => ({
+      ...prev,
+      watchlist: prev.watchlist + (newStatus === 'WATCHLIST' ? 1 : -1),
+      watched: prev.watched + (newStatus === 'WATCHED' ? 1 : -1)
+    }));
+
     try {
       await coupleMovieService.updateStatus(imdbId, { watch_status: newStatus });
     } catch (e) {
-      // Revert could go here
+      loadSharedMovies();
     }
   };
 
   const handleCoupleRate = async (imdbId, rating) => {
+    const movie = sharedMovies.find(m => m.imdbId === imdbId);
+    if (!movie) return;
+    const wasWatchlist = movie.watchStatus === 'WATCHLIST';
+
     // Optimistic UI Update
     setSharedMovies(prev => prev.map(m => m.imdbId === imdbId ? { ...m, yourRating: rating, watchStatus: 'WATCHED' } : m));
+    if (wasWatchlist) {
+      setStats(prev => ({
+        ...prev,
+        watchlist: Math.max(0, prev.watchlist - 1),
+        watched: prev.watched + 1
+      }));
+    }
+
     try {
-      await coupleMovieService.rate(imdbId, rating);
-      // Fetch stats quietly down the line if needed without triggering the full screen loader
+      await coupleMovieService.updateStatus(imdbId, { rating, watch_status: 'WATCHED' });
     } catch (e) {
-      // Revert could go here
+      loadSharedMovies();
     }
   };
 
@@ -255,13 +298,13 @@ export default function CouplePage() {
         ) : filteredMovies.length > 0 ? (
           <div className="space-y-6">
             <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <motion.div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((movie, index) => (
                   <motion.div key={movie.id || movie.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
                     <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.isMatch && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
                     <div className="relative aspect-[2/3] overflow-hidden">
                       {movie.poster && movie.poster !== 'N/A' ? (
-                        <img src={movie.poster} alt={movie.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={movie.poster} alt={movie.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-secondary"><Film className="h-12 w-12 text-muted-foreground" /></div>
                       )}

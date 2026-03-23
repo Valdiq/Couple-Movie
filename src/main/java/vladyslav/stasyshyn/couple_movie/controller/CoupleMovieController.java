@@ -30,6 +30,14 @@ public class CoupleMovieController {
         return ResponseEntity.ok(coupleMovieService.getSharedMovies(user));
     }
 
+    @GetMapping("/my-ids")
+    public ResponseEntity<List<String>> getMyAddedMovieIds(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
+        }
+        return ResponseEntity.ok(coupleMovieService.getMyAddedMovieIds(user));
+    }
+
     @PostMapping
     public ResponseEntity<AddMovieResponse> addMovie(@AuthenticationPrincipal User user,
             @RequestBody Map<String, Object> body) {
@@ -50,7 +58,7 @@ public class CoupleMovieController {
 
     @PatchMapping("/{imdbId}")
     public ResponseEntity<UpdateMovieStatusResponse> updateStatus(@AuthenticationPrincipal User user,
-            @PathVariable String imdbId, @RequestBody Map<String, String> body) {
+            @PathVariable String imdbId, @RequestBody Map<String, Object> body) {
         if (user == null) {
             throw new UnauthorizedException("Not authenticated");
         }

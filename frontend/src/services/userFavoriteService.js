@@ -5,6 +5,14 @@ export const userFavoriteService = {
         const response = await api.get('/favorites');
         return response.data;
     },
+    getIds: async () => {
+        try {
+            const response = await api.get('/favorites/ids');
+            return response.data || [];
+        } catch (e) {
+            return [];
+        }
+    },
     add: async (movieData) => {
         const response = await api.post('/favorites', movieData);
         return response.data;

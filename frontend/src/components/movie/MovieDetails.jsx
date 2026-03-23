@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
-import { User as UserEntity } from "@/entities/User";
+import { useAuth } from "@/lib/AuthContext";
 import { Movie } from "@/entities/Movie";
 import { coupleMovieService } from "@/services/coupleMovieService";
 import AppleEmoji from "@/components/ui/AppleEmoji";
@@ -11,7 +11,7 @@ import AppleEmoji from "@/components/ui/AppleEmoji";
 export default function MovieDetails({ movie, isOpen, onClose }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, userFavorites, addFavoriteId, removeFavoriteId, myCoupleMovieIds, addCoupleMovieId } = useAuth();
   const [fullMovie, setFullMovie] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [coupleMessage, setCoupleMessage] = useState(null);
@@ -44,34 +44,17 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
     const imdbId = movie?.id || movie?.imdbID || movie?.imdb_id || '';
     let cancelled = false;
 
-    const fetchAll = async () => {
-      try {
-        const currentUser = await UserEntity.me();
-        if (cancelled) return;
-        setUser(currentUser);
-
-        if (currentUser && imdbId) {
-          const checkFav = UserFavorite.check(imdbId);
-          const checkCouple = currentUser.partner_id
-            ? coupleMovieService.check(imdbId)
-            : Promise.resolve(false);
-
-          const [favStatus, coupleStatus] = await Promise.all([checkFav, checkCouple]);
-
-          if (cancelled) return;
-          setIsFavorite(!!favStatus);
-          // Only update couple list state from API if the user hasn't already
-          // clicked Add to Couple List (which would have set the optimistic state)
-          if (!coupleActionTakenRef.current) {
-            setIsInCoupleList(coupleStatus);
-            // Also sync back to the movie object so reopening is correct
-            if (movie) movie.in_couple_list = coupleStatus;
-          }
-        }
-      } catch (error) {
-        if (!cancelled) setUser(null);
+    if (user && imdbId) {
+      setIsFavorite(userFavorites.includes(imdbId));
+      if (!coupleActionTakenRef.current) {
+        const inCoupleStr = myCoupleMovieIds.includes(imdbId);
+        setIsInCoupleList(inCoupleStr);
+        if (movie) movie.in_couple_list = inCoupleStr;
       }
-    };
+    } else {
+      setIsFavorite(false);
+      setIsInCoupleList(false);
+    }
 
     const fetchDetails = async () => {
       if (imdbId) {
@@ -84,7 +67,6 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       }
     };
 
-    fetchAll();
     fetchDetails();
 
     return () => { cancelled = true; };
@@ -101,6 +83,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
     try {
       if (previousState) {
         await UserFavorite.remove(movieImdbId);
+        removeFavoriteId(movieImdbId);
       } else {
         await UserFavorite.add({
           imdb_id: movieImdbId,
@@ -109,6 +92,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           year: displayMovie.year || '',
           genre: displayMovie.genre || ''
         });
+        addFavoriteId(movieImdbId);
       }
       // Update the local movie object to cache the value so closing and reopening keeps it
       if (movie) {
@@ -133,6 +117,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
       await coupleMovieService.add({
         imdb_id: movieImdbId
       });
+      addCoupleMovieId(movieImdbId);
       setCoupleMessage({ type: 'success', text: 'Added to Couple Watchlist!' });
 
       // Update local movie object so reopening the modal keeps the correct status
@@ -179,7 +164,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
             <div className="relative bg-card">
               <div className="absolute top-0 left-0 w-full h-[80%] overflow-hidden rounded-t-2xl">
                 {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' && (
-                  <img src={displayMovie.poster} alt="" className="w-full h-full object-cover opacity-10 blur-xl scale-110" onError={() => setImgError(true)} />
+                  <img src={displayMovie.poster} alt="" loading="lazy" className="w-full h-full object-cover opacity-10 blur-xl scale-110" onError={() => setImgError(true)} />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-card/30 via-card/80 to-card" />
               </div>
@@ -197,6 +182,7 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
                     <img
                       src={displayMovie.poster}
                       alt={displayMovie.title}
+                      loading="lazy"
                       className="w-full rounded-xl shadow-2xl shadow-black/40"
                       onError={() => setImgError(true)}
                     />

@@ -20,4 +20,6 @@ public interface CoupleMovieRepository extends JpaRepository<CoupleMovie, Long> 
     Optional<CoupleMovie> findByCoupleKeyAndImdbId(String coupleKey, String imdbId);
 
     void deleteByCoupleKeyAndImdbId(String coupleKey, String imdbId);
+
+    List<String> findMyAddedImdbIds(@Param("coupleKey") String coupleKey, @Param("userId") Long userId);
 }

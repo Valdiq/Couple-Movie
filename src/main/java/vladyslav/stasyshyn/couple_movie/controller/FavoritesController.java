@@ -29,6 +29,14 @@ public class FavoritesController {
         return ResponseEntity.ok(favoritesService.getFavorites(user));
     }
 
+    @GetMapping("/ids")
+    public ResponseEntity<List<String>> getFavoriteIds(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Not authenticated");
+        }
+        return ResponseEntity.ok(favoritesService.getFavoriteIds(user));
+    }
+
     @PostMapping
     public ResponseEntity<AddFavoriteResponse> addFavorite(@AuthenticationPrincipal User user,
             @RequestBody Map<String, String> request) {

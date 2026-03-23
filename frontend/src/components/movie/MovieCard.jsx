@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { motion } from "framer-motion";
 import { Star, Heart, Users, Check, Plus, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +11,11 @@ export default function MovieCard({
   movie,
   onSelect,
   variant = "default",
-  coupleStatus,
+  coupleStatus = null,
   showCoupleAdd = false,
-  onAddToCouple,
+  onAddToCouple = null,
 }) {
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { userFavorites, addFavoriteId, removeFavoriteId, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -29,11 +30,7 @@ export default function MovieCard({
 
   const isMatch = coupleStatus?.user_you_added && coupleStatus?.partner_added;
 
-  useEffect(() => {
-    if (variant === "default" && movieImdbId) {
-      UserFavorite.check(movieImdbId).then(setIsFavorite).catch(() => { });
-    }
-  }, [movieImdbId, variant]);
+  const isFavorite = isAuthenticated && userFavorites?.includes(movieImdbId);
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
@@ -41,12 +38,12 @@ export default function MovieCard({
     try {
       if (isFavorite) {
         await UserFavorite.remove(movieImdbId);
-        setIsFavorite(false);
+        removeFavoriteId(movieImdbId);
       } else {
         await UserFavorite.add({
           imdb_id: movieImdbId,
         });
-        setIsFavorite(true);
+        addFavoriteId(movieImdbId);
       }
     } catch (error) {
       console.error("Error handling favorite:", error);
@@ -85,6 +82,7 @@ export default function MovieCard({
           <img
             src={moviePoster}
             alt={`${movieTitle} poster`}
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={() => setImgError(true)}
           />

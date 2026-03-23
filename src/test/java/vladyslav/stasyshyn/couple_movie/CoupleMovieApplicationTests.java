@@ -2,6 +2,7 @@ package vladyslav.stasyshyn.couple_movie;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,12 +12,15 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
-import vladyslav.stasyshyn.couple_movie.dto.AuthenticationResponse;
+import jakarta.servlet.http.Cookie;
 import vladyslav.stasyshyn.couple_movie.dto.RegisterRequest;
+import vladyslav.stasyshyn.couple_movie.entity.Movie;
+import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 import vladyslav.stasyshyn.couple_movie.service.EmailService;
 import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -26,6 +30,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.Objects;
 
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
 
@@ -60,18 +66,18 @@ class CoupleMovieApplicationTests {
     private EmailService emailService;
 
     @Autowired
-    private vladyslav.stasyshyn.couple_movie.repository.MovieRepository movieRepository;
+    private MovieRepository movieRepository;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUpMovies() {
         if (movieRepository.findById("tt1375666").isEmpty()) {
-            movieRepository.save(vladyslav.stasyshyn.couple_movie.entity.Movie.builder()
+            movieRepository.save(Movie.builder()
                     .imdbId("tt1375666")
                     .title("Inception")
                     .build());
         }
         if (movieRepository.findById("tt0816692").isEmpty()) {
-            movieRepository.save(vladyslav.stasyshyn.couple_movie.entity.Movie.builder()
+            movieRepository.save(Movie.builder()
                     .imdbId("tt0816692")
                     .title("Interstellar")
                     .build());
@@ -117,21 +123,21 @@ class CoupleMovieApplicationTests {
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(java.util.Objects
+                        .content(Objects
                                 .requireNonNull(objectMapper.writeValueAsString(registerRequest))))
                 .andExpect(status().isOk());
 
         AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
         MvcResult authResult = mockMvc.perform(post("/api/v1/auth/authenticate")
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects
                                 .requireNonNull(objectMapper.writeValueAsString(authRequest))))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        AuthenticationResponse authResponse = objectMapper.readValue(
-                authResult.getResponse().getContentAsString(), AuthenticationResponse.class);
-        Assertions.assertNotNull(authResponse.token());
+        Cookie jwtCookie = authResult.getResponse().getCookie("jwt");
+        Assertions.assertNotNull(jwtCookie);
+        Assertions.assertNotNull(jwtCookie.getValue());
     }
 
     @Test
@@ -150,11 +156,11 @@ class CoupleMovieApplicationTests {
 
     @Test
     void testCoupleController() throws Exception {
-        String tokenA = createAndAuthenticateUser("user1@example.com", "passwordA", "user1");
-        String tokenB = createAndAuthenticateUser("user2@example.com", "passwordB", "user2");
+        Cookie tokenA = createAndAuthenticateUser("user1@example.com", "passwordA", "user1");
+        Cookie tokenB = createAndAuthenticateUser("user2@example.com", "passwordB", "user2");
 
         MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
-                        .header("Authorization", "Bearer " + tokenA)
+                        .cookie(tokenA)
                         .param("username", "user2"))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -163,30 +169,30 @@ class CoupleMovieApplicationTests {
         long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
 
         mockMvc.perform(get("/api/v1/couple/invites")
-                        .header("Authorization", "Bearer " + tokenB))
+                        .cookie(tokenB))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/couple/accept/" + requestId)
-                        .header("Authorization", "Bearer " + tokenB))
+                        .cookie(tokenB))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/couple/partner")
-                        .header("Authorization", "Bearer " + tokenA))
+                        .cookie(tokenA))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/couple/movies")
-                        .header("Authorization", "Bearer " + tokenA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                        .cookie(tokenA))
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
     }
 
     @Test
     void testCoupleRejection() throws Exception {
-        String tokenC = createAndAuthenticateUser("userC@example.com", "passwordC", "userC");
-        String tokenD = createAndAuthenticateUser("userD@example.com", "passwordD", "userD");
+        Cookie tokenC = createAndAuthenticateUser("userC@example.com", "passwordC", "userC");
+        Cookie tokenD = createAndAuthenticateUser("userD@example.com", "passwordD", "userD");
 
         MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
-                        .header("Authorization", "Bearer " + tokenC)
+                        .cookie(tokenC)
                         .param("username", "userD"))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -195,100 +201,100 @@ class CoupleMovieApplicationTests {
         long requestId = objectMapper.readTree(inviteResponse).get("id").asLong();
 
         mockMvc.perform(post("/api/v1/couple/reject/" + requestId)
-                        .header("Authorization", "Bearer " + tokenD))
+                        .cookie(tokenD))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/couple/partner")
-                        .header("Authorization", "Bearer " + tokenC))
+                        .cookie(tokenC))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void testFavoritesFlow() throws Exception {
-        String token = createAndAuthenticateUser("fav_tester@example.com", "password123", "favtester");
+        Cookie token = createAndAuthenticateUser("fav_tester@example.com", "password123", "favtester");
 
         mockMvc.perform(post("/api/v1/favorites")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/favorites")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt1375666\"}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(patch("/api/v1/favorites/tt1375666")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull(
+                        .cookie(token)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull(
                                 "{\"watch_status\": \"WATCHED\", \"user_rating\": 4.5}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/favorites")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk());
 
         mockMvc.perform(delete("/api/v1/favorites/tt1375666")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk());
     }
 
     @Test
     void testCoupleSharedMoviesFlow() throws Exception {
-        String tokenA = createAndAuthenticateUser("couple_test_A@example.com", "passwordA", "coupleA");
-        String tokenB = createAndAuthenticateUser("couple_test_B@example.com", "passwordB", "coupleB");
+        Cookie tokenA = createAndAuthenticateUser("couple_test_A@example.com", "passwordA", "coupleA");
+        Cookie tokenB = createAndAuthenticateUser("couple_test_B@example.com", "passwordB", "coupleB");
 
         MvcResult inviteResult = mockMvc.perform(post("/api/v1/couple/invite")
-                        .header("Authorization", "Bearer " + tokenA)
+                        .cookie(tokenA)
                         .param("username", "coupleB"))
                 .andExpect(status().isOk())
                 .andReturn();
         long requestId = objectMapper.readTree(inviteResult.getResponse().getContentAsString()).get("id")
                 .asLong();
         mockMvc.perform(post("/api/v1/couple/accept/" + requestId)
-                        .header("Authorization", "Bearer " + tokenB))
+                        .cookie(tokenB))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/couple/movies")
-                        .header("Authorization", "Bearer " + tokenA)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
+                        .cookie(tokenA)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/couple/movies")
-                        .header("Authorization", "Bearer " + tokenB)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
+                        .cookie(tokenB)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"imdb_id\": \"tt0816692\"}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/couple/movies")
-                        .header("Authorization", "Bearer " + tokenA))
+                        .cookie(tokenA))
                 .andExpect(status().isOk());
 
         mockMvc.perform(patch("/api/v1/couple/movies/tt0816692")
-                        .header("Authorization", "Bearer " + tokenB)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"watch_status\": \"WATCHLIST\"}")))
+                        .cookie(tokenB)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"watch_status\": \"WATCHLIST\"}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/couple/movies/tt0816692/rate")
-                        .header("Authorization", "Bearer " + tokenA)
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects.requireNonNull("{\"rating\": 4.0}")))
+                        .cookie(tokenA)
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects.requireNonNull("{\"rating\": 4.0}")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/couple/movies/stats")
-                        .header("Authorization", "Bearer " + tokenB))
+                        .cookie(tokenB))
                 .andExpect(status().isOk());
 
         mockMvc.perform(delete("/api/v1/couple/movies/tt0816692")
-                        .header("Authorization", "Bearer " + tokenA))
+                        .cookie(tokenA))
                 .andExpect(status().isOk());
     }
 
-    private String createAndAuthenticateUser(String email, String password, String username) throws Exception {
+    private Cookie createAndAuthenticateUser(String email, String password, String username) throws Exception {
         RegisterRequest registerRequest = RegisterRequest.builder()
                 .firstName("Test")
                 .lastName("User")
@@ -298,14 +304,14 @@ class CoupleMovieApplicationTests {
                 .build();
 
         MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                        .content(java.util.Objects
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(Objects
                                 .requireNonNull(objectMapper.writeValueAsString(registerRequest))))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        AuthenticationResponse authResponse = objectMapper.readValue(
-                registerResult.getResponse().getContentAsString(), AuthenticationResponse.class);
-        return authResponse.token();
+        Cookie jwtCookie = registerResult.getResponse().getCookie("jwt");
+        Assertions.assertNotNull(jwtCookie);
+        return jwtCookie;
     }
 }

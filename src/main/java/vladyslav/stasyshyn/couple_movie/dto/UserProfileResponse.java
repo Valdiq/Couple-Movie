@@ -12,7 +12,8 @@ public record UserProfileResponse(
         String avatar_url,
         String username,
         String created_date,
-        boolean is_verified) {
+        boolean is_verified,
+        Long partner_id) {
     public static UserProfileResponse fromUser(User user) {
         String fName = user.getFirstName() != null ? user.getFirstName() : "";
         String lName = user.getLastName() != null ? user.getLastName() : "";
@@ -27,6 +28,7 @@ public record UserProfileResponse(
                 user.getAvatarUrl(),
                 user.getDisplayUsername(),
                 user.getCreatedDate() != null ? user.getCreatedDate().toString() : null,
-                user.isVerified());
+                user.isVerified(),
+                user.getPartnerId());
     }
 }

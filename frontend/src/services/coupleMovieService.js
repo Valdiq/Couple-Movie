@@ -9,6 +9,14 @@ export const coupleMovieService = {
             return [];
         }
     },
+    getMyIds: async () => {
+        try {
+            const response = await api.get('/couple/movies/my-ids');
+            return response.data || [];
+        } catch (e) {
+            return [];
+        }
+    },
     add: async (movieData) => {
         const response = await api.post('/couple/movies', movieData);
         return response.data;

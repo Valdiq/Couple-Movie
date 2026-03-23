@@ -20,7 +20,6 @@ export default function StarRating({ rating = 0, onRatingChange, size = "sm", re
 
   const handleClick = (newRating) => {
     if (readonly) return;
-    // Allows unsetting the rating by clicking the same star again
     if (newRating === rating) {
       onRatingChange(0);
     } else {
@@ -41,7 +40,7 @@ export default function StarRating({ rating = 0, onRatingChange, size = "sm", re
           if (displayRating >= starValue) {
             fillClass = "fill-yellow-400";
           } else if (displayRating >= starValue - 0.5) {
-            fillClass = "fill-yellow-400/50"; // Use a semi-transparent fill for half-stars
+            fillClass = "fill-yellow-400/50";
           }
           
           return (

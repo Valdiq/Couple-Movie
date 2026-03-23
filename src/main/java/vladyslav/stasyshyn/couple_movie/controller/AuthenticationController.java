@@ -4,8 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
-import vladyslav.stasyshyn.couple_movie.dto.AuthenticationResponse;
 import jakarta.validation.Valid;
 import vladyslav.stasyshyn.couple_movie.dto.RegisterRequest;
 import vladyslav.stasyshyn.couple_movie.dto.UpdatePasswordRequest;
@@ -27,13 +28,41 @@ public class AuthenticationController {
     private final AuthenticationService service;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(service.register(request));
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
+        String token = service.register(request);
+        setJwtCookie(response, token);
+        return ResponseEntity.ok(Map.of("message", "Registered successfully"));
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
-        return ResponseEntity.ok(service.authenticate(request));
+    public ResponseEntity<Map<String, String>> authenticate(@RequestBody AuthenticationRequest request, HttpServletResponse response) {
+        String token = service.authenticate(request);
+        setJwtCookie(response, token);
+        return ResponseEntity.ok(Map.of("message", "Authenticated successfully"));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
+        clearJwtCookie(response);
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    private void setJwtCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie("jwt", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // set to true in production with HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(24 * 60 * 60); // 1 day
+        response.addCookie(cookie);
+    }
+
+    private void clearJwtCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie("jwt", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); 
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     /**

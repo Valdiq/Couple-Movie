@@ -42,6 +42,15 @@ public class CoupleMovieService {
         return movies.stream().map(CoupleMovieResponse::fromProjection).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<String> getMyAddedMovieIds(User user) {
+        if (user.getPartnerId() == null) {
+            return List.of();
+        }
+        String coupleKey = getCoupleKey(user);
+        return coupleMovieRepository.findMyAddedImdbIds(coupleKey, user.getId());
+    }
+
     @Transactional
     public AddMovieResponse addMovie(User user, Map<String, Object> movieData) {
         String coupleKey = getCoupleKey(user);
@@ -94,14 +103,39 @@ public class CoupleMovieService {
     }
 
     @Transactional
-    public UpdateMovieStatusResponse updateMovieStatus(User user, String imdbId, Map<String, String> body) {
-        WatchStatus watchStatus = WatchStatus.valueOf(body.getOrDefault("watch_status", "WATCHLIST"));
+    public UpdateMovieStatusResponse updateMovieStatus(User user, String imdbId, Map<String, Object> body) {
         String coupleKey = getCoupleKey(user);
 
         CoupleMovie movie = coupleMovieRepository.findByCoupleKeyAndImdbId(coupleKey, imdbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found in shared list"));
 
-        movie.setWatchStatus(watchStatus);
+        if (body.containsKey("watch_status")) {
+            WatchStatus newStatus = WatchStatus.valueOf(String.valueOf(body.get("watch_status")));
+            movie.setWatchStatus(newStatus);
+            if (newStatus == WatchStatus.WATCHLIST) {
+                if (movie.getUser1Id() != null && movie.getUser1Id().equals(user.getId())) {
+                    movie.setUser1Rating(null);
+                } else if (movie.getUser2Id() != null && movie.getUser2Id().equals(user.getId())) {
+                    movie.setUser2Rating(null);
+                }
+            }
+        }
+
+        if (body.containsKey("rating")) {
+            double rating = Double.parseDouble(String.valueOf(body.get("rating")));
+            if (movie.getUser1Id() != null && movie.getUser1Id().equals(user.getId())) {
+                movie.setUser1Rating(rating);
+            } else if (movie.getUser2Id() != null && movie.getUser2Id().equals(user.getId())) {
+                movie.setUser2Rating(rating);
+            } else if (movie.getUser1Id() == null) {
+                movie.setUser1Id(user.getId());
+                movie.setUser1Rating(rating);
+            } else {
+                movie.setUser2Id(user.getId());
+                movie.setUser2Rating(rating);
+            }
+        }
+
         coupleMovieRepository.save(movie);
 
         return new UpdateMovieStatusResponse(

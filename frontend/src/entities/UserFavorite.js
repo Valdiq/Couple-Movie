@@ -4,6 +4,9 @@ export const UserFavorite = {
     list: async () => {
         return userFavoriteService.list();
     },
+    getIds: async () => {
+        return userFavoriteService.getIds();
+    },
     filter: async () => {
         // Legacy compatibility - just list all favorites
         return userFavoriteService.list();
@@ -17,7 +20,6 @@ export const UserFavorite = {
     check: async (imdbId) => {
         return userFavoriteService.check(imdbId);
     },
-    // Legacy compatibility
     create: async (data) => {
         return userFavoriteService.add(data);
     },

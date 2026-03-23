@@ -3,32 +3,25 @@ import api from '../api/axios';
 export const authService = {
     login: async (email, password) => {
         const response = await api.post('/auth/authenticate', { email, password });
-        if (response.data.token) {
-            localStorage.setItem('token', response.data.token);
-        }
         return response.data;
     },
     register: async (firstname, lastname, username, email, password) => {
         const response = await api.post('/auth/register', { firstName: firstname, lastName: lastname, username, email, password });
-        if (response.data.token) {
-            localStorage.setItem('token', response.data.token);
-        }
         return response.data;
     },
-    logout: () => {
-        localStorage.removeItem('token');
+    logout: async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {
+            // ignore errors on logout
+        }
         window.location.href = '/login';
     },
     getCurrentUser: async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return null;
-
         try {
             const response = await api.get('/auth/me');
             return response.data;
         } catch (e) {
-            // Token expired or invalid
-            localStorage.removeItem('token');
             return null;
         }
     },
@@ -37,7 +30,7 @@ export const authService = {
         return response.data;
     },
     resetPassword: async (currentPassword, newPassword) => {
-        const response = await api.post('/auth/reset-password', { currentPassword, newPassword });
+        const response = await api.post('/auth/update-password', { currentPassword, newPassword });
         return response.data;
     },
     verifyEmail: async (token) => {

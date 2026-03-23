@@ -33,6 +33,11 @@ public class FavoritesService {
                 .stream().map(FavoriteResponse::fromProjection).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<String> getFavoriteIds(User user) {
+        return userFavoriteRepository.findImdbIdsByUser(user);
+    }
+
     @Transactional
     public AddFavoriteResponse addFavorite(User user, Map<String, String> request) {
         String imdbId = request.get("imdb_id");
