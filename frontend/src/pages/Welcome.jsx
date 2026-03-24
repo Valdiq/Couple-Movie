@@ -68,7 +68,7 @@ export default function Welcome() {
 
           <div className="mt-16 flex items-center justify-center gap-8 text-muted-foreground">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">10K+</p>
+              <p className="text-2xl font-bold text-foreground">25K+</p>
               <p className="text-xs">Movies</p>
             </div>
             <div className="h-8 w-px bg-border" />
