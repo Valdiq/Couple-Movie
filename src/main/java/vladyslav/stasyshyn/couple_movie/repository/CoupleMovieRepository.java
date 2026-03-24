@@ -21,5 +21,8 @@ public interface CoupleMovieRepository extends JpaRepository<CoupleMovie, Long> 
 
     void deleteByCoupleKeyAndImdbId(String coupleKey, String imdbId);
 
+    @Query("SELECT c.imdbId FROM CoupleMovie c WHERE c.coupleKey = :coupleKey AND " +
+           "((c.addedByUserId = :userId AND c.userYouAdded = true) OR " +
+           "(c.addedByUserId <> :userId AND c.partnerAdded = true))")
     List<String> findMyAddedImdbIds(@Param("coupleKey") String coupleKey, @Param("userId") Long userId);
 }
