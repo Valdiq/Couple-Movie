@@ -4,15 +4,15 @@ spring:
   application:
     name: couple-movie
   datasource:
-    url: ${DATASOURCE_URL}
-    username: ${DATASOURCE_USERNAME}
-    password: ${DATASOURCE_PASSWORD}
-    driver-class-name: ${DATASOURCE_DRIVER_CLASS_NAME}
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/couple_movie}
+    username: ${DATASOURCE_USERNAME:postgres}
+    password: ${DATASOURCE_PASSWORD:postgres}
+    driver-class-name: ${DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 25
 
   jpa:
-    database-platform: ${JPA_DATABASE_PLATFORM}
+    database-platform: ${JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
     hibernate:
       ddl-auto: update
     properties:
@@ -21,10 +21,10 @@ spring:
     show-sql: true
 
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -37,32 +37,32 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: ${GOOGLE_SCOPE}
-            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            client-id: ${GOOGLE_CLIENT_ID:placeholder-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:placeholder-client-secret}
+            scope: ${GOOGLE_SCOPE:email, profile}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
 
 app:
   meilisearch:
-    url: ${MEILISEARCH_URL}
-    api-key: ${MEILISEARCH_API_KEY}
+    url: ${MEILISEARCH_URL:http://localhost:7700}
+    api-key: ${MEILISEARCH_API_KEY:masterKey}
 
   frontend:
-    url: ${FRONTEND_URL}
+    url: ${FRONTEND_URL:http://localhost:5173}
 
   jwt:
-    secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS}
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
   omdb:
-    api-key: ${OMDB_API_KEY}
-    url: ${OMDB_URL}
+    api-key: ${OMDB_API_KEY:placeholder}
+    url: ${OMDB_URL:http://www.omdbapi.com/}
 
   tmdb:
-    api-key: ${TMDB_API_KEY}
+    api-key: ${TMDB_API_KEY:placeholder}
 
   ai:
-    api-key: ${AI_API_KEY}
+    api-key: ${AI_API_KEY:placeholder}
 
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
