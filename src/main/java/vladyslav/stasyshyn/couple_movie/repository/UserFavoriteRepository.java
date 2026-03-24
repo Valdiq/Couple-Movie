@@ -20,8 +20,15 @@ public interface UserFavoriteRepository extends JpaRepository<UserFavorite, Long
 
     boolean existsByUserAndImdbId(User user, String imdbId);
 
-    @Query(nativeQuery = true)
+    @Query(value = "SELECT uf.id, uf.imdb_id AS imdbId, uf.title, uf.poster, " +
+           "uf.year_val AS yearVal, uf.genre, uf.watch_status AS watchStatus, " +
+           "uf.user_rating AS userRating, uf.created_at AS createdAt, " +
+           "m.imdb_rating AS imdbRating, m.awards AS awards " +
+           "FROM user_favorites uf LEFT JOIN movies m ON uf.imdb_id = m.imdb_id " +
+           "WHERE uf.user_id = :userId " +
+           "ORDER BY uf.created_at DESC", nativeQuery = true)
     List<FavoriteWithDetails> findByUserWithDetails(@Param("userId") Long userId);
 
+    @Query("SELECT uf.imdbId FROM UserFavorite uf WHERE uf.user = :user")
     List<String> findImdbIdsByUser(@Param("user") User user);
 }

@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vladyslav.stasyshyn.couple_movie.entity.CoupleRequest;
@@ -23,6 +24,7 @@ public interface CoupleRequestRepository extends JpaRepository<CoupleRequest, Lo
     List<CoupleRequest> findBySenderIdOrReceiverEmailAndStatus(Long senderId, String receiverEmail,
             RequestStatus status);
 
+    @Query("SELECT cr FROM CoupleRequest cr WHERE (cr.sender.id = :userId OR cr.receiverEmail = :email) AND cr.status = :status")
     List<CoupleRequest> findByUserAndStatus(@Param("userId") Long userId, @Param("email") String email,
             @Param("status") RequestStatus status);
 }
