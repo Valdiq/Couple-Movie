@@ -32,15 +32,15 @@ function StarRating({ rating, onChange, disabled, size = 'md', label }) {
                 onMouseEnter={() => !disabled && setHover(halfVal)}
                 onMouseLeave={() => !disabled && setHover(null)}
                 onClick={(e) => { e.stopPropagation(); !disabled && onChange && onChange(halfVal); }}>
-                <Star className={`${starSize} transition-colors ${(isHalfFilled || isFullFilled) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+                <Star className={`${starSize} transition-colors ${(isHalfFilled || isFullFilled) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/50'}`} />
               </div>
               <div className="absolute inset-0 z-10" style={{ clipPath: 'inset(0 0 0 50%)' }}
                 onMouseEnter={() => !disabled && setHover(fullVal)}
                 onMouseLeave={() => !disabled && setHover(null)}
                 onClick={(e) => { e.stopPropagation(); !disabled && onChange && onChange(fullVal); }}>
-                <Star className={`${starSize} transition-colors ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+                <Star className={`${starSize} transition-colors ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/50'}`} />
               </div>
-              <Star className={`${starSize} ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : isHalfFilled ? 'text-muted-foreground/30' : 'text-muted-foreground/30'}`} />
+              <Star className={`${starSize} ${isFullFilled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/50'}`} />
             </div>
           );
         })}
