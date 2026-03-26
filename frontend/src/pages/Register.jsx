@@ -80,7 +80,7 @@ const Register = () => {
     };
 
     const handleGoogleLogin = () => {
-        const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || 'http://localhost:8082';
+        const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '');
         window.location.href = `${backendUrl}/oauth2/authorization/google`;
     };
 
