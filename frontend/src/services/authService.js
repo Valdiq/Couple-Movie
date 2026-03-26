@@ -3,6 +3,7 @@ import api from '../api/axios';
 export const authService = {
     login: async (email, password) => {
         const response = await api.post('/auth/authenticate', { email, password });
+        console.log('login', response.data);
         return response.data;
     },
     register: async (firstname, lastname, username, email, password) => {
@@ -13,13 +14,13 @@ export const authService = {
         try {
             await api.post('/auth/logout');
         } catch (e) {
-            // ignore errors on logout
         }
         window.location.href = '/login';
     },
     getCurrentUser: async () => {
         try {
             const response = await api.get('/auth/me');
+            console.log('getCurrentUser', response.data);
             return response.data;
         } catch (e) {
             return null;
