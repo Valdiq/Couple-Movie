@@ -26,6 +26,7 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -43,9 +44,24 @@ public class SecurityConfiguration {
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestResolver(customAuthorizationRequestResolver())
+                        )
                         .successHandler(oAuth2LoginSuccessHandler));
 
         return http.build();
+    }
+
+    private org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver customAuthorizationRequestResolver() {
+        org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver resolver =
+                new org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver(
+                        clientRegistrationRepository,
+                        "/oauth2/authorization"
+                );
+        resolver.setAuthorizationRequestCustomizer(customizer -> {
+            customizer.additionalParameters(params -> params.put("prompt", "select_account"));
+        });
+        return resolver;
     }
 
     @Bean
