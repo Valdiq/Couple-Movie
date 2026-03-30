@@ -32,6 +32,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         log.info("Processing request: {} {}", request.getMethod(), request.getRequestURI());
 
+        java.util.Enumeration<String> headerNames = request.getHeaderNames();
+        while (headerNames != null && headerNames.hasMoreElements()) {
+            String headerName = headerNames.nextElement();
+            log.info("Incoming Header -> {}: {}", headerName, request.getHeader(headerName));
+        }
+
         String authHeader = request.getHeader("Authorization");
         String jwt = null;
         String userEmail = null;
