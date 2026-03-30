@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import vladyslav.stasyshyn.couple_movie.dto.AuthenticationRequest;
 import jakarta.validation.Valid;
@@ -55,26 +54,28 @@ public class AuthenticationController {
     }
 
     private void setJwtCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie("jwt", token);
-        cookie.setHttpOnly(true);
         boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
         log.info("Setting JWT cookie. frontendUrl: {}, isSecure: {}", frontendUrl, isSecure);
-        cookie.setSecure(isSecure);
-        cookie.setPath("/");
-        cookie.setMaxAge(24 * 60 * 60); // 1 day
-        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
-        response.addCookie(cookie);
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", token)
+                .httpOnly(true)
+                .secure(isSecure)
+                .path("/")
+                .maxAge(24 * 60 * 60) // 1 day
+                .sameSite(isSecure ? "None" : "Lax")
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private void clearJwtCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("jwt", "");
-        cookie.setHttpOnly(true);
         boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
-        cookie.setSecure(isSecure);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
-        response.addCookie(cookie);
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(isSecure)
+                .path("/")
+                .maxAge(0)
+                .sameSite(isSecure ? "None" : "Lax")
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     /**

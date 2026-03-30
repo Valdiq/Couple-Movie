@@ -17,6 +17,9 @@ import vladyslav.stasyshyn.couple_movie.repository.UserRepository;
 import java.io.IOException;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -64,14 +67,17 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         String token = jwtService.generateToken(user);
         
-        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", token);
-        cookie.setHttpOnly(true);
         boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
-        cookie.setSecure(isSecure);
-        cookie.setPath("/");
-        cookie.setMaxAge(24 * 60 * 60); // 1 day
-        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
-        response.addCookie(cookie);
+        log.info("OAuth Login Success. frontendUrl: {}, isSecure: {}, email: {}", frontendUrl, isSecure, email);
+        
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", token)
+                .httpOnly(true)
+                .secure(isSecure)
+                .path("/")
+                .maxAge(24 * 60 * 60) // 1 day
+                .sameSite(isSecure ? "None" : "Lax")
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
 
         String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
                 .build().toUriString();
