@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,9 @@ public class AuthenticationController {
 
     private final AuthenticationService service;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         String token = service.register(request);
@@ -50,18 +54,22 @@ public class AuthenticationController {
     private void setJwtCookie(HttpServletResponse response, String token) {
         Cookie cookie = new Cookie("jwt", token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // set to true in production with HTTPS
+        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
+        cookie.setSecure(isSecure);
         cookie.setPath("/");
         cookie.setMaxAge(24 * 60 * 60); // 1 day
+        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
         response.addCookie(cookie);
     }
 
     private void clearJwtCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie("jwt", "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); 
+        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
+        cookie.setSecure(isSecure);
         cookie.setPath("/");
         cookie.setMaxAge(0);
+        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
         response.addCookie(cookie);
     }
 

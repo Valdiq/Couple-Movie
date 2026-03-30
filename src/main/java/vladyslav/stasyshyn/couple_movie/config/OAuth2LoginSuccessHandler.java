@@ -66,9 +66,11 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         
         jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // set to true in production with HTTPS
+        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
+        cookie.setSecure(isSecure);
         cookie.setPath("/");
         cookie.setMaxAge(24 * 60 * 60); // 1 day
+        cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
         response.addCookie(cookie);
 
         String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
