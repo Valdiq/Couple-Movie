@@ -67,19 +67,10 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         String token = jwtService.generateToken(user);
         
-        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
-        log.info("OAuth Login Success. frontendUrl: {}, isSecure: {}, email: {}", frontendUrl, isSecure, email);
+        log.info("OAuth Login Success. frontendUrl: {}, email: {}", frontendUrl, email);
         
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", token)
-                .httpOnly(true)
-                .secure(isSecure)
-                .path("/")
-                .maxAge(24 * 60 * 60) // 1 day
-                .sameSite(isSecure ? "None" : "Lax")
-                .build();
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
-
         String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
+                .queryParam("token", token)
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);

@@ -5,8 +5,11 @@ const OAuth2Redirect = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // The JWT cookie is already set by the backend OAuth2 success handler.
-        // Simply redirect to the home page and let AuthContext pick up the session.
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        if (token) {
+            localStorage.setItem('jwt', token);
+        }
         window.location.href = '/';
     }, [navigate]);
 

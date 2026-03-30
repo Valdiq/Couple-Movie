@@ -35,48 +35,22 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         String token = service.register(request);
-        setJwtCookie(response, token);
-        return ResponseEntity.ok(Map.of("message", "Registered successfully"));
+        return ResponseEntity.ok(Map.of("message", "Registered successfully", "token", token));
     }
 
     @PostMapping("/authenticate")
     public ResponseEntity<Map<String, String>> authenticate(@RequestBody AuthenticationRequest request, HttpServletResponse response) {
         log.info("Authenticating user: {}", request.email());
         String token = service.authenticate(request);
-        setJwtCookie(response, token);
-        return ResponseEntity.ok(Map.of("message", "Authenticated successfully"));
+        return ResponseEntity.ok(Map.of("message", "Authenticated successfully", "token", token));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
-        clearJwtCookie(response);
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
-    private void setJwtCookie(HttpServletResponse response, String token) {
-        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
-        log.info("Setting JWT cookie. frontendUrl: {}, isSecure: {}", frontendUrl, isSecure);
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", token)
-                .httpOnly(true)
-                .secure(isSecure)
-                .path("/")
-                .maxAge(24 * 60 * 60) // 1 day
-                .sameSite(isSecure ? "None" : "Lax")
-                .build();
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void clearJwtCookie(HttpServletResponse response) {
-        boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt", "")
-                .httpOnly(true)
-                .secure(isSecure)
-                .path("/")
-                .maxAge(0)
-                .sameSite(isSecure ? "None" : "Lax")
-                .build();
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
-    }
+    // Cookie generation removed to rely on Bearer tokens returned in the payload
 
     /**
      * Get the currently authenticated user's profile.

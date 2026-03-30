@@ -49,6 +49,9 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const data = await authService.login(email, password);
+            if (data && data.token) {
+                localStorage.setItem('jwt', data.token);
+            }
             await checkUserAuth();
             return data;
         } catch (e) {
@@ -61,7 +64,10 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(false);
         setUserFavorites([]);
         setMyCoupleMovieIds([]);
-        await authService.logout();
+        localStorage.removeItem('jwt');
+        try {
+            await authService.logout();
+        } catch (e) {}
     };
 
     const addFavoriteId = (id) => setUserFavorites(prev => [...prev, id]);
