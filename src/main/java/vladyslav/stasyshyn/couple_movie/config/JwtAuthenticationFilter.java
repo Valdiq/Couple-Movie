@@ -29,40 +29,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
-        
-        log.info("Processing request: {} {}", request.getMethod(), request.getRequestURI());
 
-        java.util.Enumeration<String> headerNames = request.getHeaderNames();
-        while (headerNames != null && headerNames.hasMoreElements()) {
-            String headerName = headerNames.nextElement();
-            log.info("Incoming Header -> {}: {}", headerName, request.getHeader(headerName));
-        }
 
         String authHeader = request.getHeader("Authorization");
         String jwt = null;
         String userEmail = null;
 
         if (request.getCookies() != null) {
-            log.info("Request contains {} cookies", request.getCookies().length);
             for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-                log.info("Found cookie: {}", cookie.getName());
                 if ("jwt".equals(cookie.getName())) {
                     jwt = cookie.getValue();
-                    log.info("Extracted JWT from cookie");
                     break;
                 }
             }
-        } else {
-            log.info("Request contains no cookies");
         }
 
         if (jwt == null && authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-            log.info("Extracted JWT from Authorization header");
         }
 
         if (jwt == null) {
-            log.info("No JWT found, continuing filter chain");
             filterChain.doFilter(request, response);
             return;
         }

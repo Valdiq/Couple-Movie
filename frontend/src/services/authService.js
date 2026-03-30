@@ -20,7 +20,6 @@ export const authService = {
     getCurrentUser: async () => {
         try {
             const response = await api.get('/auth/me');
-            console.log('getCurrentUser', response.data);
             return response.data;
         } catch (e) {
             return null;

@@ -252,8 +252,8 @@ export default function CouplePage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-destructive text-lg font-bold text-primary-foreground">
-                  {partner?.avatar_url ? (
-                    <img src={partner.avatar_url} alt="Partner" className="h-full w-full object-cover" />
+                  {(partner?.avatar_url || partner?.avatarUrl) ? (
+                    <img src={partner.avatar_url || partner.avatarUrl} alt="Partner" className="h-full w-full object-cover" />
                   ) : (
                     (partner.firstName || partner.username || 'P')[0].toUpperCase()
                   )}
