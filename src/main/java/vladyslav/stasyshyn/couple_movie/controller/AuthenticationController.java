@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,7 @@ import java.util.Map;
 /**
  * Controller for user authentication and specific registration.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class AuthenticationController {
 
     @PostMapping("/authenticate")
     public ResponseEntity<Map<String, String>> authenticate(@RequestBody AuthenticationRequest request, HttpServletResponse response) {
+        log.info("Authenticating user: {}", request.email());
         String token = service.authenticate(request);
         setJwtCookie(response, token);
         return ResponseEntity.ok(Map.of("message", "Authenticated successfully"));
@@ -55,6 +58,7 @@ public class AuthenticationController {
         Cookie cookie = new Cookie("jwt", token);
         cookie.setHttpOnly(true);
         boolean isSecure = frontendUrl != null && frontendUrl.startsWith("https");
+        log.info("Setting JWT cookie. frontendUrl: {}, isSecure: {}", frontendUrl, isSecure);
         cookie.setSecure(isSecure);
         cookie.setPath("/");
         cookie.setMaxAge(24 * 60 * 60); // 1 day
@@ -78,6 +82,7 @@ public class AuthenticationController {
      */
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal User user) {
+        log.info("Processing /me request. AuthenticationPrincipal is: {}", user != null ? user.getEmail() : "null");
         if (user == null) {
             throw new UnauthorizedException("Not authenticated");
         }
