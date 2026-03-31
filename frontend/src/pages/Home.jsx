@@ -98,6 +98,10 @@ export default function Home() {
     setIsDetailsOpen(true);
   };
 
+  const currentIdx = selectedMovie ? movies.findIndex(m => (m.id || m.imdb_id || m.imdbID) === (selectedMovie.id || selectedMovie.imdb_id || selectedMovie.imdbID)) : -1;
+  const handleNext = currentIdx >= 0 && currentIdx < movies.length - 1 ? () => handleMovieSelect(movies[currentIdx + 1]) : undefined;
+  const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(movies[currentIdx - 1]) : undefined;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header section */}
@@ -117,7 +121,7 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="mx-auto mb-10 max-w-2xl text-muted-foreground"
           >
-            Pick an emotion, type your vibe, or surprise yourself — we'll find the perfect movie for you.
+            Pick an emotion, type your vibe, or surprise yourself — we'll find the perfect movie for you
           </motion.p>
 
           {/* Emotion chips */}
@@ -141,31 +145,13 @@ export default function Home() {
             ))}
           </motion.div>
 
-          {/* Custom vibe input */}
+          {/* Surprise me button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mx-auto flex max-w-md gap-2"
+            className="mx-auto flex max-w-md justify-center"
           >
-            <div className="relative flex-1">
-              <Sparkles className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={customVibe}
-                onChange={(e) => setCustomVibe(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCustomVibe()}
-                placeholder="Type your vibe..."
-                className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-            <Button
-              onClick={handleCustomVibe}
-              disabled={!customVibe.trim() || isLoading}
-              className="bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-xl"
-            >
-              Discover
-            </Button>
             <Button
               onClick={getRandomMovie}
               disabled={isLoading}
@@ -275,7 +261,7 @@ export default function Home() {
               <div className="mb-4 text-5xl flex justify-center"><AppleEmoji emoji="🎬" /></div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">No movies found</h3>
               <p className="mb-6 text-muted-foreground">
-                Try searching for movies first to build the cache, or choose a different emotion.
+                Try searching for movies first to build the cache, or choose a different emotion
               </p>
               <div className="flex justify-center gap-3">
                 <Button variant="outline" onClick={clearMood} className="border-border text-muted-foreground">
@@ -306,7 +292,7 @@ export default function Home() {
               Choose a mood or search for movies
             </h3>
             <p className="mb-6 text-sm text-muted-foreground">
-              Select an emotion above, type your own vibe, or head to search to find something specific.
+              Select an emotion above or head to search to find something specific
             </p>
             <Link to={createPageUrl("Search")}>
               <Button className="bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-xl gap-2">
@@ -322,6 +308,8 @@ export default function Home() {
         movie={selectedMovie}
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
+        onNext={handleNext}
+        onPrevious={handlePrevious}
       />
 
       <ChatWidget />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle } from "lucide-react";
+import { X, Star, Heart, Clock, Calendar, Play, Users, Award, Tv, Sparkles, Loader2, PlusCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserFavorite } from "@/entities/UserFavorite";
 import { useAuth } from "@/lib/AuthContext";
@@ -8,7 +8,7 @@ import { Movie } from "@/entities/Movie";
 import { coupleMovieService } from "@/services/coupleMovieService";
 import AppleEmoji from "@/components/ui/AppleEmoji";
 
-export default function MovieDetails({ movie, isOpen, onClose }) {
+export default function MovieDetails({ movie, isOpen, onClose, onNext, onPrevious }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user, userFavorites, addFavoriteId, removeFavoriteId, myCoupleMovieIds, addCoupleMovieId } = useAuth();
@@ -154,6 +154,26 @@ export default function MovieDetails({ movie, isOpen, onClose }) {
           className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
           onClick={onClose}
         >
+          {onPrevious && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPrevious(); }}
+              className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-black/40 hover:bg-black/80 text-white rounded-full z-[60] transition-colors backdrop-blur-sm"
+              aria-label="Previous movie"
+            >
+              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+            </button>
+          )}
+
+          {onNext && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onNext(); }}
+              className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-black/40 hover:bg-black/80 text-white rounded-full z-[60] transition-colors backdrop-blur-sm"
+              aria-label="Next movie"
+            >
+              <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
+            </button>
+          )}
+          
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -132,6 +132,10 @@ export default function Favorites() {
   const totalPages = Math.ceil(filteredFavorites.length / ITEMS_PER_PAGE);
   const paginatedFavorites = filteredFavorites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+  const currentIdx = selectedMovie ? paginatedFavorites.findIndex(m => (m.id || m.imdbId || m.imdbID) === (selectedMovie.id || selectedMovie.imdbId || selectedMovie.imdbID)) : -1;
+  const handleNext = currentIdx >= 0 && currentIdx < paginatedFavorites.length - 1 ? () => handleMovieSelect(paginatedFavorites[currentIdx + 1]) : undefined;
+  const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(paginatedFavorites[currentIdx - 1]) : undefined;
+
   return (
     <div className="min-h-screen bg-background pb-8">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -257,7 +261,7 @@ export default function Favorites() {
           </motion.div>
         )}
       </div>
-      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
+      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} onNext={handleNext} onPrevious={handlePrevious} />
       <ChatWidget />
     </div>
   );

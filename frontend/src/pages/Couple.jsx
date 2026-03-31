@@ -216,6 +216,11 @@ export default function CouplePage() {
     const filteredMovies = activeTab === 'matches' ? sharedMovies.filter(m => m.isMatch)
       : activeTab === 'watched' ? sharedMovies.filter(m => m.watchStatus === 'WATCHED')
         : sharedMovies.filter(m => m.watchStatus !== 'WATCHED');
+    
+    const paginatedMovies = filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const currentIdx = selectedMovie ? paginatedMovies.findIndex(m => (m.id || m.imdbId || m.imdbID) === (selectedMovie.id || selectedMovie.imdbId || selectedMovie.imdbID)) : -1;
+    const handleNext = currentIdx >= 0 && currentIdx < paginatedMovies.length - 1 ? () => handleMovieSelect(paginatedMovies[currentIdx + 1]) : undefined;
+    const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(paginatedMovies[currentIdx - 1]) : undefined;
 
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
@@ -299,7 +304,7 @@ export default function CouplePage() {
           <div className="space-y-6">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((movie, index) => (
+                {paginatedMovies.map((movie, index) => (
                   <motion.div key={movie.id || movie.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
                     <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.isMatch && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>
                     <div className="relative aspect-[2/3] overflow-hidden">
@@ -399,7 +404,7 @@ export default function CouplePage() {
           )}
         </AnimatePresence>
 
-        <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
+        <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} onNext={handleNext} onPrevious={handlePrevious} />
       </div>
     );
   }

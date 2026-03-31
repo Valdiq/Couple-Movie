@@ -173,6 +173,10 @@ export default function Search() {
   const totalPages = Math.ceil(totalHits / ITEMS_PER_PAGE);
   const activeFiltersCount = selectedGenres.length + selectedEmotions.length + (showAwardedOnly ? 1 : 0);
 
+  const currentIdx = selectedMovie ? filteredMovies.findIndex(m => (m.id || m.imdb_id || m.imdbID) === (selectedMovie.id || selectedMovie.imdb_id || selectedMovie.imdbID)) : -1;
+  const handleNext = currentIdx >= 0 && currentIdx < filteredMovies.length - 1 ? () => handleMovieSelect(filteredMovies[currentIdx + 1]) : undefined;
+  const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(filteredMovies[currentIdx - 1]) : undefined;
+
   return (
     <div className="min-h-screen bg-background pb-8">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -414,7 +418,7 @@ export default function Search() {
         </div>
       </div>
 
-      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
+      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} onNext={handleNext} onPrevious={handlePrevious} />
       <ChatWidget />
     </div>
   );
