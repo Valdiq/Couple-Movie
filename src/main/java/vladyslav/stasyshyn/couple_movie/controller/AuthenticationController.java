@@ -55,7 +55,6 @@ public class AuthenticationController {
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
-    // Cookie generation removed to rely on Bearer tokens returned in the payload
 
     /**
      * Get the currently authenticated user's profile.

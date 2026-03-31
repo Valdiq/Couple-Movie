@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Film, Search, Heart, Users, User, Crown, Menu, X } from "lucide-react";
+import { Film, Search, Heart, Users, User, Crown, Menu, X, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/AuthContext";
+import { FeedbackModal } from "@/components/ui/FeedbackModal";
 
 const NAV_ITEMS = [
   { page: "Home", label: "Home", icon: Film },
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { user } = useAuth();
 
   return (
@@ -55,6 +57,13 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Right side */}
           <div className="hidden items-center gap-3 md:flex">
+            <button
+              onClick={() => setFeedbackOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/50"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Help & Feedback
+            </button>
             <Link
               to={createPageUrl("Pricing")}
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
@@ -108,6 +117,16 @@ export default function Layout({ children, currentPageName }) {
                 );
               })}
               <div className="my-2 h-px bg-border" />
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setFeedbackOpen(true);
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground text-left"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Help & Feedback
+              </button>
               <Link
                 to={createPageUrl("Pricing")}
                 onClick={() => setMobileOpen(false)}
@@ -136,6 +155,8 @@ export default function Layout({ children, currentPageName }) {
       <main className="pt-16">
         {children}
       </main>
+
+      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }
