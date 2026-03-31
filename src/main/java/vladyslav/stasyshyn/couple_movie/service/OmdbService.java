@@ -191,13 +191,16 @@ public class OmdbService {
     }
 
     public String seedDatabaseFromFile() {
-        java.io.File file = new java.io.File("top_50k_movies.txt");
-        if (!file.exists()) {
-            return "Error: File 'top_50k_movies.txt' not found in workspace root.";
-        }
-
         try {
-            List<String> imdbIds = java.nio.file.Files.readAllLines(file.toPath());
+            org.springframework.core.io.ClassPathResource resource = new org.springframework.core.io.ClassPathResource("top_50k_movies.txt");
+            if (!resource.exists()) {
+                return "Error: File 'top_50k_movies.txt' not found in resources.";
+            }
+
+            List<String> imdbIds;
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                imdbIds = reader.lines().collect(Collectors.toList());
+            }
             if (imdbIds.isEmpty()) return "File is empty.";
 
             var semaphore = new Semaphore(25);
