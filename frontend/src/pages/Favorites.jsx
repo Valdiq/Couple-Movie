@@ -132,7 +132,8 @@ export default function Favorites() {
   const totalPages = Math.ceil(filteredFavorites.length / ITEMS_PER_PAGE);
   const paginatedFavorites = filteredFavorites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const currentIdx = selectedMovie ? paginatedFavorites.findIndex(m => (m.id || m.imdbId || m.imdbID) === (selectedMovie.id || selectedMovie.imdbId || selectedMovie.imdbID)) : -1;
+  const activeId = selectedMovie ? (selectedMovie.imdbId || selectedMovie.imdb_id || selectedMovie.imdbID || selectedMovie.id) : null;
+  const currentIdx = activeId ? paginatedFavorites.findIndex(m => (m.imdbId || m.imdb_id || m.imdbID || m.id) === activeId) : -1;
   const handleNext = currentIdx >= 0 && currentIdx < paginatedFavorites.length - 1 ? () => handleMovieSelect(paginatedFavorites[currentIdx + 1]) : undefined;
   const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(paginatedFavorites[currentIdx - 1]) : undefined;
 

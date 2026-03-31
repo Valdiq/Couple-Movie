@@ -218,7 +218,8 @@ export default function CouplePage() {
         : sharedMovies.filter(m => m.watchStatus !== 'WATCHED');
     
     const paginatedMovies = filteredMovies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-    const currentIdx = selectedMovie ? paginatedMovies.findIndex(m => (m.id || m.imdbId || m.imdbID) === (selectedMovie.id || selectedMovie.imdbId || selectedMovie.imdbID)) : -1;
+    const activeId = selectedMovie ? (selectedMovie.imdbId || selectedMovie.imdb_id || selectedMovie.imdbID || selectedMovie.id) : null;
+    const currentIdx = activeId ? paginatedMovies.findIndex(m => (m.imdbId || m.imdb_id || m.imdbID || m.id) === activeId) : -1;
     const handleNext = currentIdx >= 0 && currentIdx < paginatedMovies.length - 1 ? () => handleMovieSelect(paginatedMovies[currentIdx + 1]) : undefined;
     const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(paginatedMovies[currentIdx - 1]) : undefined;
 

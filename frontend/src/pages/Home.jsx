@@ -98,7 +98,8 @@ export default function Home() {
     setIsDetailsOpen(true);
   };
 
-  const currentIdx = selectedMovie ? movies.findIndex(m => (m.id || m.imdb_id || m.imdbID) === (selectedMovie.id || selectedMovie.imdb_id || selectedMovie.imdbID)) : -1;
+  const activeId = selectedMovie ? (selectedMovie.imdbId || selectedMovie.imdb_id || selectedMovie.imdbID || selectedMovie.id) : null;
+  const currentIdx = activeId ? movies.findIndex(m => (m.imdbId || m.imdb_id || m.imdbID || m.id) === activeId) : -1;
   const handleNext = currentIdx >= 0 && currentIdx < movies.length - 1 ? () => handleMovieSelect(movies[currentIdx + 1]) : undefined;
   const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(movies[currentIdx - 1]) : undefined;
 

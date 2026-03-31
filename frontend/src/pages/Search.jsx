@@ -173,7 +173,8 @@ export default function Search() {
   const totalPages = Math.ceil(totalHits / ITEMS_PER_PAGE);
   const activeFiltersCount = selectedGenres.length + selectedEmotions.length + (showAwardedOnly ? 1 : 0);
 
-  const currentIdx = selectedMovie ? filteredMovies.findIndex(m => (m.id || m.imdb_id || m.imdbID) === (selectedMovie.id || selectedMovie.imdb_id || selectedMovie.imdbID)) : -1;
+  const activeId = selectedMovie ? (selectedMovie.imdbId || selectedMovie.imdb_id || selectedMovie.imdbID || selectedMovie.id) : null;
+  const currentIdx = activeId ? filteredMovies.findIndex(m => (m.imdbId || m.imdb_id || m.imdbID || m.id) === activeId) : -1;
   const handleNext = currentIdx >= 0 && currentIdx < filteredMovies.length - 1 ? () => handleMovieSelect(filteredMovies[currentIdx + 1]) : undefined;
   const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(filteredMovies[currentIdx - 1]) : undefined;
 
