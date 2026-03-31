@@ -189,4 +189,52 @@ public class OmdbService {
 
         return movieDetails;
     }
+
+    public String seedDatabaseFromFile() {
+        java.io.File file = new java.io.File("top_50k_movies.txt");
+        if (!file.exists()) {
+            return "Error: File 'top_50k_movies.txt' not found in workspace root.";
+        }
+
+        try {
+            List<String> imdbIds = java.nio.file.Files.readAllLines(file.toPath());
+            if (imdbIds.isEmpty()) return "File is empty.";
+
+            var semaphore = new Semaphore(25);
+
+            Thread.startVirtualThread(() -> {
+                log.info("Starting heavy seeding process for {} movies...", imdbIds.size());
+                long count = 0;
+                try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                    for (String imdbId : imdbIds) {
+                        if (imdbId == null || imdbId.trim().isEmpty()) continue;
+                        
+                        executor.submit(() -> {
+                            try {
+                                semaphore.acquire();
+                                var cached = movieRepository.findById(imdbId.trim());
+                                if (cached.isEmpty() || cached.get().getPlot() == null) {
+                                    getMovieDetails(imdbId.trim());
+                                }
+                            } catch (Exception e) {
+                                log.error("Failed seed fetch for {}", imdbId, e);
+                            } finally {
+                                semaphore.release();
+                            }
+                        });
+                        count++;
+                        if (count % 1000 == 0) {
+                            log.info("Queued {} / {}", count, imdbIds.size());
+                        }
+                    }
+                }
+                log.info("Finished processing all movies in the seeding task!");
+            });
+
+            return "Successfully started background seeding task for " + imdbIds.size() + " movies! Monitor logs for progress.";
+        } catch (Exception e) {
+            log.error("Failed to read top_50k_movies.txt", e);
+            return "Exception: " + e.getMessage();
+        }
+    }
 }

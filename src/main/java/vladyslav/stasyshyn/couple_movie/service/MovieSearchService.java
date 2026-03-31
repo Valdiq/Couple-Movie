@@ -112,6 +112,11 @@ public class MovieSearchService {
     }
 
     public void saveMovie(OmdbMovieDetails omdbMovie) {
+        Long votes = parseVotes(omdbMovie.imdbVotes());
+        if (votes < 1000) {
+            return;
+        }
+
         double rating = 0.0;
         if (omdbMovie.imdbRating() != null && !omdbMovie.imdbRating().equals("N/A")) {
             rating = Double.parseDouble(omdbMovie.imdbRating());
