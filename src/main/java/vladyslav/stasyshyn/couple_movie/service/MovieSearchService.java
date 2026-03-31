@@ -46,7 +46,7 @@ public class MovieSearchService {
         Settings settings = new Settings();
         settings.setFilterableAttributes(new String[]{"genre", "hasWinAward", "yearInt", "imdbVotesInt", "imdbRating"});
         settings.setSearchableAttributes(new String[]{"title", "genre"});
-        settings.setSortableAttributes(new String[]{"imdbRating"});
+        settings.setSortableAttributes(new String[]{"imdbVotesInt"});
 
         settings.setStopWords(new String[]{
                 "a", "an", "the", "and", "or", "but", "in", "on", "at",
@@ -238,7 +238,7 @@ public class MovieSearchService {
                     .attributesToSearchOn(new String[]{"title"})
                     .offset(page * size)
                     .limit(size)
-                    .sort(new String[]{"imdbRating:desc"})
+                    .sort(new String[]{"imdbVotesInt:desc"})
                     .matchingStrategy(MatchingStrategy.ALL)
                     .build();
             SearchResult searchResult = (SearchResult) meilisearchClient
@@ -271,7 +271,7 @@ public class MovieSearchService {
                     .q(query)
                     .attributesToSearchOn(new String[]{"title"})
                     .limit(limit)
-                    .sort(new String[]{"imdbRating:desc"})
+                    .sort(new String[]{"imdbVotesInt:desc"})
                     .matchingStrategy(MatchingStrategy.ALL)
                     .build();
             SearchResult searchResult = (SearchResult) meilisearchClient
@@ -316,7 +316,7 @@ public class MovieSearchService {
                     .filter(new String[]{filterQuery})
                     .offset(page * size)
                     .limit(size)
-                    .sort(new String[]{"imdbRating:desc"})
+                    .sort(new String[]{"imdbVotesInt:desc"})
                     .build();
 
             SearchResult searchResult = (SearchResult) meilisearchClient
@@ -364,7 +364,7 @@ public class MovieSearchService {
                     }
                     return false;
                 })
-                .sorted(Comparator.comparing(Movie::getImdbRating, Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(Comparator.comparing(m -> parseVotes(m.getImdbVotes()), Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
     }
 
@@ -420,7 +420,7 @@ public class MovieSearchService {
                     .filter(new String[]{finalFilterQuery})
                     .offset(page * size)
                     .limit(size)
-                    .sort(new String[]{"imdbRating:desc"})
+                    .sort(new String[]{"imdbVotesInt:desc"})
                     .build();
 
             SearchResult searchResult = (SearchResult) meilisearchClient

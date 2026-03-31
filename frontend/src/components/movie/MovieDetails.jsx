@@ -180,10 +180,10 @@ export default function MovieDetails({ movie, isOpen, onClose, onNext, onPreviou
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="bg-card text-foreground rounded-2xl border border-border max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+            className="bg-card text-foreground rounded-2xl border border-border max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative bg-card overflow-y-auto w-full h-full flex-1">
+            <div className="relative bg-card">
               <div className="absolute top-0 left-0 w-full h-[80%] overflow-hidden rounded-t-2xl">
                 {!imgError && displayMovie.poster && displayMovie.poster !== 'N/A' && (
                   <img src={displayMovie.poster} alt="" loading="lazy" className="w-full h-full object-cover opacity-10 blur-xl scale-110" onError={() => setImgError(true)} />

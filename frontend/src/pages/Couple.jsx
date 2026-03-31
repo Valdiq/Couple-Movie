@@ -224,7 +224,8 @@ export default function CouplePage() {
     const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(paginatedMovies[currentIdx - 1]) : undefined;
 
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+      <>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="mb-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
             Couple <span className="gradient-text">Space</span>
@@ -404,9 +405,9 @@ export default function CouplePage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} onNext={handleNext} onPrevious={handlePrevious} />
       </div>
+      <MovieDetails movie={selectedMovie} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} onNext={handleNext} onPrevious={handlePrevious} />
+    </>
     );
   }
 
