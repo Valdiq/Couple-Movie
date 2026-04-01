@@ -11,6 +11,8 @@ import vladyslav.stasyshyn.couple_movie.dto.tmdb.TmdbTrendingResponse;
 import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 
+import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbMovieDetails;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -23,15 +25,18 @@ public class TmdbService {
     private final String apiKey;
     private final OmdbService omdbService;
     private final MovieRepository movieRepository;
+    private final MovieSearchService movieSearchService;
 
     public TmdbService(RestClient.Builder restClientBuilder,
                        @Value("${app.tmdb.api-key:placeholder}") String apiKey,
                        OmdbService omdbService,
-                       MovieRepository movieRepository) {
+                       MovieRepository movieRepository,
+                       MovieSearchService movieSearchService) {
         this.apiKey = apiKey;
         this.restClient = restClientBuilder.baseUrl("https://api.themoviedb.org/3").build();
         this.omdbService = omdbService;
         this.movieRepository = movieRepository;
+        this.movieSearchService = movieSearchService;
     }
 
     @Cacheable("trendingMovies")
@@ -75,8 +80,9 @@ public class TmdbService {
                     if (dbMovieOpt.isPresent()) {
                         trendingMovies.add(dbMovieOpt.get());
                     } else {
-                        var omdbDetails = omdbService.getMovieDetails(imdbId);
+                        OmdbMovieDetails omdbDetails = omdbService.getMovieDetails(imdbId);
                         if (omdbDetails != null) {
+                            movieSearchService.saveTrendingMovie(omdbDetails);
                             var savedMovieOpt = movieRepository.findById(imdbId);
                             savedMovieOpt.ifPresent(trendingMovies::add);
                         }

@@ -173,6 +173,63 @@ public class MovieSearchService {
         }
     }
 
+    public void saveTrendingMovie(OmdbMovieDetails omdbMovie) {
+        double rating = 0.0;
+        if (omdbMovie.imdbRating() != null && !omdbMovie.imdbRating().equals("N/A")) {
+            rating = Double.parseDouble(omdbMovie.imdbRating());
+        }
+
+        Movie movie = Movie.builder()
+                .imdbId(omdbMovie.imdbID())
+                .title(omdbMovie.title())
+                .year(omdbMovie.year())
+                .type(omdbMovie.type())
+                .poster(omdbMovie.poster())
+                .genre(omdbMovie.genre())
+                .director(omdbMovie.director())
+                .writer(omdbMovie.writer())
+                .plot(omdbMovie.plot())
+                .runtime(omdbMovie.runtime())
+                .actors(omdbMovie.actors())
+                .language(omdbMovie.language())
+                .country(omdbMovie.country())
+                .awards(omdbMovie.awards())
+                .imdbVotes(omdbMovie.imdbVotes())
+                .imdbRating(rating)
+                .build();
+        movieRepository.save(Objects.requireNonNull(movie));
+
+        List<String> genreList = new ArrayList<>();
+        if (omdbMovie.genre() != null && !omdbMovie.genre().isEmpty() && !omdbMovie.genre().equals("N/A")) {
+            genreList = Arrays.stream(omdbMovie.genre().split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toList());
+        }
+
+        boolean hasWin = false;
+        if (omdbMovie.awards() != null && !omdbMovie.awards().equals("N/A")) {
+            hasWin = omdbMovie.awards().matches("(?i).*\\b(win|wins|won)\\b.*");
+        }
+        MovieDocument document = MovieDocument.builder()
+                .imdbID(omdbMovie.imdbID())
+                .title(omdbMovie.title())
+                .year(omdbMovie.year())
+                .genre(genreList)
+                .imdbRating(rating)
+                .awards(omdbMovie.awards() != null ? omdbMovie.awards() : "")
+                .hasWinAward(hasWin)
+                .yearInt(parseYear(omdbMovie.year()))
+                .imdbVotesInt(parseVotes(omdbMovie.imdbVotes()))
+                .build();
+
+        try {
+            String jsonDoc = objectMapper.writeValueAsString(Collections.singletonList(document));
+            meilisearchClient.index(INDEX_NAME).addDocuments(jsonDoc, "imdbID");
+        } catch (Exception e) {
+            log.error("Failed to index trending movie: {}", omdbMovie.title(), e);
+        }
+    }
+
     public void saveMovieSummaries(List<OmdbMovieSummary> summaries) {
         if (summaries == null || summaries.isEmpty())
             return;

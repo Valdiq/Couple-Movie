@@ -5,6 +5,26 @@ import MovieDetails from "@/components/movie/MovieDetails";
 import { Flame } from "lucide-react";
 import api from "@/api/axios";
 
+const mapMovie = (m) => ({
+  id: m.imdbID || m.imdbId || m.imdbid,
+  title: m.Title || m.title,
+  poster: m.Poster || m.poster,
+  year: m.Year || m.year,
+  type: m.Type || m.type,
+  genre: m.Genre || m.genre,
+  director: m.Director || m.director,
+  writer: m.Writer || m.writer,
+  actors: m.Actors || m.actors,
+  plot: m.Plot || m.plot,
+  language: m.Language || m.language,
+  country: m.Country || m.country,
+  awards: m.Awards || m.awards,
+  runtime: m.Runtime || m.runtime,
+  imdb_rating: m.imdbRating || m.imdb_rating || m.imdbrating,
+  imdb_votes: m.imdbVotes || m.imdb_votes || m.imdbvotes,
+  imdbRating: m.imdbRating,
+});
+
 export default function Trending() {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -18,13 +38,13 @@ export default function Trending() {
     queryKey: ["trendingMovies"],
     queryFn: async () => {
       const res = await api.get("/movies/trending");
-      return res.data;
+      return res.data.map(mapMovie);
     },
     staleTime: 6 * 60 * 60 * 1000,
   });
 
-  const activeId = selectedMovie ? (selectedMovie.imdbId || selectedMovie.imdb_id || selectedMovie.imdbID || selectedMovie.id) : null;
-  const currentIdx = activeId && movies ? movies.findIndex(m => (m.imdbId || m.imdb_id || m.imdbID || m.id) === activeId) : -1;
+  const activeId = selectedMovie?.id || null;
+  const currentIdx = activeId && movies ? movies.findIndex(m => m.id === activeId) : -1;
   const handleNext = currentIdx >= 0 && currentIdx < movies.length - 1 ? () => handleMovieSelect(movies[currentIdx + 1]) : undefined;
   const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(movies[currentIdx - 1]) : undefined;
 
@@ -63,7 +83,7 @@ export default function Trending() {
       {!isLoading && !isError && movies && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
           {movies.map((movie) => (
-            <MovieCard key={movie.imdbId} movie={movie} onSelect={handleMovieSelect} />
+            <MovieCard key={movie.id} movie={movie} onSelect={handleMovieSelect} />
           ))}
         </div>
       )}
