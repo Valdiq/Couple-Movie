@@ -1,6 +1,7 @@
 import Home from './pages/Home';
 import Search from './pages/Search';
 import Favorites from './pages/Favorites';
+import Trending from './pages/Trending';
 import Couple from './pages/Couple';
 import Pricing from './pages/Pricing';
 import Profile from './pages/Profile';
@@ -18,6 +19,7 @@ import ResetPassword from './pages/ResetPassword';
 export const PAGES = {
     "Home": Home,
     "Search": Search,
+    "Trending": Trending,
     "Favorites": Favorites,
     "Couple": Couple,
     "Pricing": Pricing,

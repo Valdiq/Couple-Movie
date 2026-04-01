@@ -15,6 +15,7 @@ import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import vladyslav.stasyshyn.couple_movie.service.EmotionGenreService;
 import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
+import vladyslav.stasyshyn.couple_movie.service.TmdbService;
 import java.util.*;
 
 /**
@@ -28,6 +29,7 @@ public class MovieController {
     private final OmdbService omdbService;
     private final MovieSearchService movieSearchService;
     private final EmotionGenreService emotionGenreService;
+    private final TmdbService tmdbService;
 
     /**
      * Search for movies by title using the external OMDb API.
@@ -43,6 +45,14 @@ public class MovieController {
     @GetMapping("/search-all")
     public ResponseEntity<OmdbSearchResponse> searchAllMovies(@RequestParam("title") String title) {
         return ResponseEntity.ok(omdbService.searchAllMovies(title));
+    }
+
+    /**
+     * Get live trending movies/series from TMDB, populated via OMDb cache/DB.
+     */
+    @GetMapping("/trending")
+    public ResponseEntity<List<Movie>> getTrending() {
+        return ResponseEntity.ok(tmdbService.getTrending());
     }
 
     /**

@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Film, Search, Heart, Users, User, Crown, Menu, X, HelpCircle } from "lucide-react";
+import { Film, Search, Heart, Users, User, Crown, Menu, X, HelpCircle, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/AuthContext";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
 
 const NAV_ITEMS = [
   { page: "Home", label: "Home", icon: Film },
+  { page: "Trending", label: "Trending", icon: Flame },
   { page: "Search", label: "Search", icon: Search },
   { page: "Couple", label: "Couple Space", icon: Users },
   { page: "Favorites", label: "Favorites", icon: Heart },
