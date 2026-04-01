@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import MovieCard from "@/components/movie/MovieCard";
 import MovieDetails from "@/components/movie/MovieDetails";
 import { Flame } from "lucide-react";
+import api from "@/api/axios";
 
 export default function Trending() {
   const [selectedMovie, setSelectedMovie] = useState(null);
@@ -16,14 +17,8 @@ export default function Trending() {
   const { data: movies, isLoading, isError } = useQuery({
     queryKey: ["trendingMovies"],
     queryFn: async () => {
-      const token = localStorage.getItem("token") || ""; 
-      const res = await fetch("/api/v1/movies/trending", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (!res.ok) throw new Error("Network response was not ok");
-      return res.json();
+      const res = await api.get("/movies/trending");
+      return res.data;
     },
     staleTime: 6 * 60 * 60 * 1000,
   });
@@ -34,14 +29,20 @@ export default function Trending() {
   const handlePrevious = currentIdx > 0 ? () => handleMovieSelect(movies[currentIdx - 1]) : undefined;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8 space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center gap-4 border-b border-border pb-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20">
-          <Flame className="h-7 w-7 text-white" />
+    <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8 space-y-8 animate-in fade-in duration-500">
+      
+      {/* Centered Header imitating Home page */}
+      <div className="flex flex-col items-center justify-center text-center space-y-5 pb-8">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
+          <Flame className="h-8 w-8 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Top 20 Trending This Week</h1>
-          <p className="text-muted-foreground mt-1 text-sm">The hottest global movies and TV shows right now.</p>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-foreground">
+            Top 20 <span className="gradient-text">Trending This Week</span>
+          </h1>
+          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto text-lg">
+            The hottest global movies and TV shows right now.
+          </p>
         </div>
       </div>
 
