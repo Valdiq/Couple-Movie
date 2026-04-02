@@ -32,25 +32,25 @@ const Register = () => {
 
         if (!formData.firstname.trim()) {
             newErrors.firstname = "First name is required";
-        } else if (!/^[A-Za-z]+$/.test(formData.firstname)) {
+        } else if (!/^[A-Za-z]+$/.test(formData.firstname.trim())) {
             newErrors.firstname = "First name must contain only letters";
         }
 
         if (!formData.lastname.trim()) {
             newErrors.lastname = "Last name is required";
-        } else if (!/^[A-Za-z]+$/.test(formData.lastname)) {
+        } else if (!/^[A-Za-z]+$/.test(formData.lastname.trim())) {
             newErrors.lastname = "Last name must contain only letters";
         }
 
         if (!formData.username.trim()) {
             newErrors.username = "Username is required";
-        } else if (!/^[A-Za-z][A-Za-z0-9]{3,}$/.test(formData.username)) {
+        } else if (!/^[A-Za-z][A-Za-z0-9]{3,}$/.test(formData.username.trim())) {
             newErrors.username = "Username must start with a letter, be at least 4 chars long, and contain no special characters";
         }
 
         if (!formData.email.trim()) {
             newErrors.email = "Email is required";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
             newErrors.email = "Please enter a valid email address";
         }
 

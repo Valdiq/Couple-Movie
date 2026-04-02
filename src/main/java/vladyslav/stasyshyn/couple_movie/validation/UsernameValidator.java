@@ -12,6 +12,6 @@ public class UsernameValidator implements ConstraintValidator<ValidUsername, Str
         if (value == null || value.trim().isEmpty()) {
             return false;
         }
-        return value.matches(USERNAME_PATTERN);
+        return value.trim().matches(USERNAME_PATTERN);
     }
 }

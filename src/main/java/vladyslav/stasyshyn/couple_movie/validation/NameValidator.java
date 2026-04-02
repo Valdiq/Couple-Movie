@@ -12,6 +12,6 @@ public class NameValidator implements ConstraintValidator<ValidName, String> {
         if (value == null || value.trim().isEmpty()) {
             return false;
         }
-        return value.matches(NAME_PATTERN);
+        return value.trim().matches(NAME_PATTERN);
     }
 }
