@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true", matchIfMissing = false)
 @Import({
         org.springframework.ai.autoconfigure.vertexai.gemini.VertexAiGeminiAutoConfiguration.class,
+        org.springframework.ai.autoconfigure.vertexai.palm2.VertexAiPalm2AutoConfiguration.class,
         org.springframework.ai.autoconfigure.vectorstore.pgvector.PgVectorStoreAutoConfiguration.class
 })
 public class AiConfiguration {
