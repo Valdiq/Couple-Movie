@@ -10,6 +10,18 @@ spring:
     driver-class-name: ${DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 25
+  ai:
+    vertex:
+      ai:
+        gemini:
+          project-id: ${PROJECT_ID:placeholder}
+          location: ${LOCATION:placeholder}
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: true
 
   jpa:
     database-platform: ${JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
@@ -60,9 +72,6 @@ app:
 
   tmdb:
     api-key: ${TMDB_API_KEY:placeholder}
-
-  ai:
-    api-key: ${AI_API_KEY:placeholder}
 
 server:
   port: ${SERVER_PORT:8080}
