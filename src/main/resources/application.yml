@@ -3,6 +3,10 @@ spring:
     import: optional:classpath:application-local.yml
   application:
     name: couple-movie
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.vertexai.gemini.VertexAiGeminiAutoConfiguration
+      - org.springframework.ai.autoconfigure.vectorstore.pgvector.PgVectorStoreAutoConfiguration
   datasource:
     url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/couple_movie}
     username: ${DATASOURCE_USERNAME:postgres}
@@ -14,6 +18,9 @@ spring:
     vertex:
       ai:
         gemini:
+          project-id: ${PROJECT_ID:placeholder}
+          location: ${LOCATION:placeholder}
+        embedding:
           project-id: ${PROJECT_ID:placeholder}
           location: ${LOCATION:placeholder}
     vectorstore:
