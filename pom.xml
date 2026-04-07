@@ -113,6 +113,21 @@
 			<artifactId>postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-vertex-ai-gemini-spring-boot-starter</artifactId>
+			<version>1.0.0-M1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-pgvector-store-spring-boot-starter</artifactId>
+			<version>1.0.0-M1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.pgvector</groupId>
+			<artifactId>pgvector</artifactId>
+			<version>0.1.4</version>
+		</dependency>
 	</dependencies>
 
 	<dependencyManagement>
@@ -124,8 +139,26 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>1.0.0-M1</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
+
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
 
 	<build>
 		<plugins>
