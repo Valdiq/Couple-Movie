@@ -13,6 +13,10 @@ export const movieService = {
         const response = await api.get(`/movies/advanced-search`, { params: { query, page, size } });
         return response.data;
     },
+    aiSearch: async (query, page = 0, size = 20) => {
+        const response = await api.get(`/movies/search/ai`, { params: { query, page, size } });
+        return response.data;
+    },
     searchByGenres: async (genres, page = 0, size = 20) => {
         const response = await api.get(`/movies/by-genres`, { params: { genres: genres.join(','), page, size } });
         return response.data;

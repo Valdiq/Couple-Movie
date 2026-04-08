@@ -16,6 +16,9 @@ import vladyslav.stasyshyn.couple_movie.service.EmotionGenreService;
 import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
 import vladyslav.stasyshyn.couple_movie.service.TmdbService;
+import vladyslav.stasyshyn.couple_movie.service.AiMovieSearchService;
+import org.springframework.http.HttpStatus;
+
 import java.util.*;
 
 /**
@@ -30,6 +33,7 @@ public class MovieController {
     private final MovieSearchService movieSearchService;
     private final EmotionGenreService emotionGenreService;
     private final TmdbService tmdbService;
+    private final Optional<AiMovieSearchService> aiMovieSearchService;
 
     /**
      * Search for movies by title using the external OMDb API.
@@ -73,6 +77,20 @@ public class MovieController {
     public ResponseEntity<List<Movie>> autocomplete(@RequestParam("query") String query,
             @RequestParam(value = "limit", defaultValue = "5") int limit) {
         return ResponseEntity.ok(movieSearchService.autocomplete(query, limit));
+    }
+
+    /**
+     * AI-Powered Semantic Search for movies using pgvector contextual similarity.
+     */
+    @GetMapping("/search/ai")
+    public ResponseEntity<SearchPageResponse> searchAi(
+            @RequestParam("query") String query,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        if (aiMovieSearchService.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        return ResponseEntity.ok(aiMovieSearchService.get().search(query, page, size));
     }
 
     /**

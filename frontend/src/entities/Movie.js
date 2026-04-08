@@ -46,6 +46,16 @@ export const Movie = {
             return { movies: [], totalHits: 0, page, size };
         }
     },
+    aiSearch: async (query, page = 0, size = 20) => {
+        try {
+            const response = await movieService.aiSearch(query, page, size);
+            const movies = (response.movies || []).map(mapOmdbToFrontend);
+            return { movies, totalHits: response.totalHits || 0, page: response.page, size: response.size };
+        } catch (e) {
+            console.error("Failed to AI search movies", e);
+            return { movies: [], totalHits: 0, page, size };
+        }
+    },
     autocomplete: async (query, limit = 5) => {
         try {
             const results = await movieService.autocomplete(query, limit);
