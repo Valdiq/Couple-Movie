@@ -17,6 +17,7 @@ import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,16 +36,14 @@ public class AiMovieSearchService {
     public SearchPageResponse search(String query, int page, int size) {
         log.info("Performing AI semantic search for: '{}'", query);
 
-        // Calculate the maximum number of results we might need across all pages up to this one
-        int topK = (page + 1) * size;
+        // Fetch a large pool of contextual matches (e.g., top 150) to allow sorting by popularity
+        int poolSize = 150;
         
-        // Search the pgvector database for closest semantic matches
-        // Similarity threshold could be tweaked depending on model behavior
         List<Document> documents = vectorStore.similaritySearch(
-                SearchRequest.query(query).withTopK(topK)
+                // You can tweak similarityThreshold in the request if you want "strict" matching
+                SearchRequest.query(query).withTopK(poolSize).withSimilarityThreshold(0.70)
         );
 
-        // Extract Imdb Ids from the Document metadata
         List<String> imdbIds = documents.stream()
                 .map(doc -> (String) doc.getMetadata().get("imdb_id"))
                 .filter(Objects::nonNull)
@@ -54,31 +53,52 @@ public class AiMovieSearchService {
             return new SearchPageResponse(List.of(), 0, page, size);
         }
 
-        // Fetch movies from Postgres DB matching the extracted IDs
         List<Movie> allFoundMovies = movieRepository.findByImdbIdIn(imdbIds);
 
-        // movieRepository.findByImdbIdIn returns unsorted results. We MUST map them back
-        // to the exact order from `imdbIds` because that reflects the AI similarity score ranking!
+        // Sorting algorithm: 
+        // We want highly relevant (early in the AI list) AND highly popular movies to bubble up.
+        // The original `imdbIds` list is already sorted purely by AI Semantic distance.
+        // We can create a hybrid score: Position penalty + Popularity bonus.
+        
         Map<String, Movie> movieMap = allFoundMovies.stream()
                 .collect(Collectors.toMap(Movie::getImdbId, m -> m));
 
-        List<Movie> orderedMovies = imdbIds.stream()
-                .map(movieMap::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<Movie> validMovies = new ArrayList<>();
+        for (String id : imdbIds) {
+            if (movieMap.containsKey(id)) {
+                validMovies.add(movieMap.get(id));
+            }
+        }
 
-        // Handle generic manual pagination over the ordered list
-        int start = Math.min(page * size, orderedMovies.size());
-        int end = Math.min((page + 1) * size, orderedMovies.size());
-        List<Movie> pageContent = orderedMovies.subList(start, end);
+        // Sort by hybrid score:
+        // Position natively gives lower index = better relevance.
+        // We can sort them to prioritize movies with substantial votes (e.g. >10,000) that are also semantically relevant.
+        validMovies.sort((m1, m2) -> {
+            long votes1 = parseVotes(m1.getImdbVotes());
+            long votes2 = parseVotes(m2.getImdbVotes());
+            
+            // To favor very popular movies within the semantically valid pool
+            return Long.compare(votes2, votes1); 
+        });
 
-        // In a vector store without pre-calculating distance, total elements is ambiguous.
-        // We'll return topK as total elements to mimic standard paged responses.
+        int start = Math.min(page * size, validMovies.size());
+        int end = Math.min((page + 1) * size, validMovies.size());
+        List<Movie> pageContent = validMovies.subList(start, end);
+
         return new SearchPageResponse(
                 pageContent,
-                documents.size(),
+                validMovies.size(),
                 page,
                 size
         );
+    }
+
+    private long parseVotes(String votesStr) {
+        if (votesStr == null || votesStr.equalsIgnoreCase("N/A") || votesStr.isEmpty()) return 0L;
+        try {
+            return Long.parseLong(votesStr.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 }

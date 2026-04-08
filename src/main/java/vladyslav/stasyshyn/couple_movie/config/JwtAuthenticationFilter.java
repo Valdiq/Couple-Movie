@@ -48,31 +48,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwt = authHeader.substring(7);
         }
 
-        if (jwt == null) {
+        if (jwt == null || jwt.trim().isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        userEmail = jwtService.extractUsername(jwt);
-        if (userEmail != null) {
-            log.info("Extracted user email from JWT: {}", userEmail);
+        try {
+            userEmail = jwtService.extractUsername(jwt);
+            if (userEmail != null) {
+                log.info("Extracted user email from JWT: {}", userEmail);
+            }
+
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.info("Successfully authenticated user in SecurityContext: {}", userEmail);
+                } else {
+                    log.info("JWT token is invalid for user: {}", userEmail);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse or validate JWT token (possibly expired or empty). Treating user as anonymous. Error: {}", e.getMessage());
         }
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-                log.info("Successfully authenticated user in SecurityContext: {}", userEmail);
-            } else {
-                log.info("JWT token is invalid for user: {}", userEmail);
-            }
-        }
         filterChain.doFilter(request, response);
     }
 }
