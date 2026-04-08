@@ -120,12 +120,16 @@ function ChatMarkdown({ content, onMovieClick }) {
 }
 
 /* ───── session storage helpers ───── */
-const CHAT_STORAGE_KEY = 'couple_movie_chat_history';
+const CHAT_STORAGE_PREFIX = 'couple_movie_chat_';
 const defaultGreeting = { role: 'assistant', content: '🎬 Hey there! I\'m your **Movie Concierge**.\n\nAsk me anything — like *"I want a sad movie about space"* or *"something similar to Lord of the Rings"* and I\'ll find the best matches from our database! 🍿' };
 
-function loadMessages() {
+function getUserStorageKey(userEmail) {
+  return CHAT_STORAGE_PREFIX + (userEmail || 'anonymous');
+}
+
+function loadMessages(userEmail) {
   try {
-    const saved = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    const saved = sessionStorage.getItem(getUserStorageKey(userEmail));
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -134,28 +138,35 @@ function loadMessages() {
   return [defaultGreeting];
 }
 
-function saveMessages(msgs) {
+function saveMessages(userEmail, msgs) {
   try {
-    sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+    sessionStorage.setItem(getUserStorageKey(userEmail), JSON.stringify(msgs));
   } catch {}
 }
 
 /* ───── main widget ───── */
 export default function ChatWidget() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const userEmail = user?.email || '';
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState(loadMessages);
+  const [messages, setMessages] = useState(() => loadMessages(userEmail));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Don't render anything for unauthenticated users
-  if (!isAuthenticated) return null;
+  // Reload messages when user changes (login/logout/switch account)
+  useEffect(() => {
+    setMessages(loadMessages(userEmail));
+  }, [userEmail]);
 
   // Persist messages to sessionStorage whenever they change
   useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
+    if (userEmail) saveMessages(userEmail, messages);
+  }, [messages, userEmail]);
+
+  // Don't render anything for unauthenticated users
+  if (!isAuthenticated) return null;
 
   // Movie details modal state
   const [selectedMovieId, setSelectedMovieId] = useState(null);
