@@ -12,6 +12,8 @@ import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true", matchIfMissing = false)
@@ -30,23 +32,32 @@ public class AiVectorizationService {
     public void backfillDatabaseWithEmbeddings() {
         log.info("Starting AI Vectorization backfill...");
 
-        List<Movie> allMovies = movieRepository.findAll();
-        log.info("Found {} movies to vectorize.", allMovies.size());
-
-        // We process in batches of 100 to avoid memory issues and API rate limits
         final int batchSize = 100;
-        for (int i = 0; i < allMovies.size(); i += batchSize) {
-            int endIndex = Math.min(i + batchSize, allMovies.size());
-            List<Movie> batch = allMovies.subList(i, endIndex);
+        int pageNumber = 0;
+        Page<Movie> page;
+
+        do {
+            page = movieRepository.findAll(PageRequest.of(pageNumber, batchSize));
+            List<Movie> batch = page.getContent();
+
+            if (batch.isEmpty()) {
+                break; // Safety check
+            }
 
             List<Document> documents = batch.stream()
                     .map(this::createDocumentFromMovie)
                     .collect(Collectors.toList());
 
-            log.info("Sending batch {} to {} to Vertex AI for embedding...", i, endIndex);
+            log.info("Sending batch {} (movies {} to {}) to Vertex AI for embedding...", 
+                     pageNumber + 1, 
+                     pageNumber * batchSize, 
+                     (pageNumber * batchSize) + batch.size());
+            
             vectorStore.add(documents);
-            log.info("Batch embedded and saved to pgvector database successfully!");
-        }
+            log.info("Batch {} embedded and saved to pgvector database successfully!", pageNumber + 1);
+
+            pageNumber++;
+        } while (page.hasNext());
 
         log.info("AI Vectorization backfill COMPLETE!");
     }
