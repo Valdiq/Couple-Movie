@@ -40,8 +40,10 @@ public class AiMovieSearchService {
         int poolSize = 150;
         
         List<Document> documents = vectorStore.similaritySearch(
-                // You can tweak similarityThreshold in the request if you want "strict" matching
-                SearchRequest.query(query).withTopK(poolSize).withSimilarityThreshold(0.70)
+                // We removed exact similarityThreshold because all-MiniLM-L6-v2 model 
+                // produces valid semantic matches that might have a distance score 
+                // lower than 0.70. Default will just return the closest nearest neighbors.
+                SearchRequest.query(query).withTopK(poolSize)
         );
 
         List<String> imdbIds = documents.stream()
