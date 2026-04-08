@@ -115,9 +115,17 @@ public class MovieController {
             String response = aiChatService.get().generateChatResponse(userMessage);
             return ResponseEntity.ok(Map.of("response", response));
         } catch (Exception e) {
-            log.error("AI Chat failed: {}", e.getMessage(), e);
+            // Log the full stack trace
+            log.error("AI Chat failed.", e);
+            // Dig into root cause for the response
+            String detail = e.getMessage();
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                detail = detail + " -> " + cause.getMessage();
+                cause = cause.getCause();
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to generate content", "details", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+                    .body(Map.of("error", "Failed to generate content", "details", detail != null ? detail : "Unknown error"));
         }
     }
 

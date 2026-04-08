@@ -19,11 +19,11 @@ spring:
     vertex:
       ai:
         gemini:
-          project-id: ${GOOGLE_CLOUD_PROJECT:your-project-id}
+          project-id: ${PROJECT_ID:your-project-id}
           location: ${LOCATION:us-central1}
           chat:
             options:
-              model: gemini-1.5-flash
+              model: gemini-pro
 
     vectorstore:
       pgvector:
