@@ -20,7 +20,7 @@ spring:
       ai:
         gemini:
           project-id: ${PROJECT_ID:your-project-id}
-          location: ${LOCATION:us-central1}
+          location: ${VERTEX_AI_LOCATION:us-central1}
           chat:
             options:
               model: gemini-pro
