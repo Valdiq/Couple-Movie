@@ -38,6 +38,7 @@ export default function Search() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalHits, setTotalHits] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [isAiMode, setIsAiMode] = useState(false);
 
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -70,9 +71,15 @@ export default function Search() {
   };
 
   const loadPage = async (query, page) => {
-    const { movies: pageMovies, totalHits: hits } = await Movie.advancedSearch(query, page - 1, ITEMS_PER_PAGE);
-    setFilteredMovies(pageMovies);
-    setTotalHits(hits);
+    if (isAiMode) {
+        const { movies: pageMovies, totalHits: hits } = await Movie.aiSearch(query, page - 1, ITEMS_PER_PAGE);
+        setFilteredMovies(pageMovies);
+        setTotalHits(hits);
+    } else {
+        const { movies: pageMovies, totalHits: hits } = await Movie.advancedSearch(query, page - 1, ITEMS_PER_PAGE);
+        setFilteredMovies(pageMovies);
+        setTotalHits(hits);
+    }
   };
 
   const handleSearch = async (e) => {
@@ -82,11 +89,15 @@ export default function Search() {
     setHasSearched(true);
     setCurrentPage(1);
     try {
-      // Populate DB via OMDB first
-      await Movie.search(searchQuery.trim());
-      // Then load page 1 from Meilisearch
-      await loadPage(searchQuery.trim(), 1);
-    } catch (error) { }
+      if (isAiMode) {
+        // AI Vector Search
+        await loadPage(searchQuery.trim(), 1);
+      } else {
+        // Standard Search
+        await Movie.search(searchQuery.trim());
+        await loadPage(searchQuery.trim(), 1);
+      }
+    } catch (error) { console.error(error); }
     setIsSearching(false);
   };
 
@@ -113,6 +124,7 @@ export default function Search() {
       }
       setIsSuggesting(true);
       try {
+        if (isAiMode) return; // Skip autocomplete for AI queries
         const results = await Movie.autocomplete(query.trim(), 5);
         setSearchSuggestions(results);
         if (results.length > 0) {
@@ -267,6 +279,17 @@ export default function Search() {
               <span className="hidden sm:inline">{isSearching ? "Searching..." : "Search"}</span>
             </Button>
           </motion.form>
+
+          {/* AI Toggle */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="mx-auto flex max-w-2xl items-center justify-end pr-2 -mt-4 z-30 relative">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors group">
+              <span className="text-xl group-hover:scale-110 transition-transform">✨</span>
+              <span className="font-medium">AI Semantic Search</span>
+              <button type="button" onClick={() => setIsAiMode(!isAiMode)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isAiMode ? 'bg-gradient-to-r from-primary to-accent' : 'bg-secondary'}`}>
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isAiMode ? 'translate-x-5' : 'translate-x-1'}`} />
+              </button>
+            </label>
+          </motion.div>
 
           {/* Filter toggle */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
