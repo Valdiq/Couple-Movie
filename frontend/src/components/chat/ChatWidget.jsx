@@ -6,6 +6,7 @@ import api from '@/api/axios';
 import ReactMarkdown from 'react-markdown';
 import { Movie } from '@/entities/Movie';
 import MovieDetails from '@/components/movie/MovieDetails';
+import { useAuth } from '@/lib/AuthContext';
 
 /* ───── tiny inline movie card shown inside chat bubbles ───── */
 function ChatMovieCard({ imdbId, title }) {
@@ -141,11 +142,15 @@ function saveMessages(msgs) {
 
 /* ───── main widget ───── */
 export default function ChatWidget() {
+  const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState(loadMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Don't render anything for unauthenticated users
+  if (!isAuthenticated) return null;
 
   // Persist messages to sessionStorage whenever they change
   useEffect(() => {
