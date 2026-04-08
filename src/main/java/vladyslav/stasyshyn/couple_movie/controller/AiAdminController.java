@@ -34,7 +34,7 @@ public class AiAdminController {
         new Thread(() -> {
             try {
                 aiVectorizationService.backfillDatabaseWithEmbeddings();
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 log.error("Failed during AI vectorization backfill stream", e);
             }
         }).start();
