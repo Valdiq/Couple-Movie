@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/v1/movies")
 @RequiredArgsConstructor
+@Slf4j
 public class MovieController {
 
     private final OmdbService omdbService;
@@ -109,8 +111,14 @@ public class MovieController {
             return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
         }
         
-        String response = aiChatService.get().generateChatResponse(userMessage);
-        return ResponseEntity.ok(Map.of("response", response));
+        try {
+            String response = aiChatService.get().generateChatResponse(userMessage);
+            return ResponseEntity.ok(Map.of("response", response));
+        } catch (Exception e) {
+            log.error("AI Chat failed: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate content", "details", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+        }
     }
 
     /**
