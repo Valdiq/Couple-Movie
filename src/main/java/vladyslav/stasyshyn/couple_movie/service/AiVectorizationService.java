@@ -6,6 +6,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 
@@ -23,6 +24,7 @@ public class AiVectorizationService {
 
     private final VectorStore vectorStore;
     private final MovieRepository movieRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * This will iterate over all movies in the database, convert them into AI Documents,
@@ -31,6 +33,17 @@ public class AiVectorizationService {
      */
     public void backfillDatabaseWithEmbeddings() {
         log.info("Starting AI Vectorization backfill...");
+
+        // Fix: Drop and recreate existing vector table to 384 dimensions (Alter fails if indexed)
+        try {
+            jdbcTemplate.execute("DROP TABLE IF EXISTS vector_store");
+            jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
+            jdbcTemplate.execute("CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb, embedding vector(384))");
+            jdbcTemplate.execute("CREATE INDEX ON vector_store USING HNSW (embedding vector_cosine_ops)");
+            log.info("Successfully dropped and recreated vector_store with 384 dimensions.");
+        } catch (Exception e) {
+            log.warn("Failed to recreate vector_store schema correctly.", e);
+        }
 
         final int batchSize = 100;
         int pageNumber = 0;
