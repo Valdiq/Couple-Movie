@@ -3,6 +3,7 @@ package vladyslav.stasyshyn.couple_movie.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import vladyslav.stasyshyn.couple_movie.dto.SearchPageResponse;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
 import vladyslav.stasyshyn.couple_movie.entity.Movie;
+import vladyslav.stasyshyn.couple_movie.entity.User;
 import vladyslav.stasyshyn.couple_movie.service.EmotionGenreService;
 import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
@@ -101,7 +103,13 @@ public class MovieController {
      * RAG Conversation with AI
      */
     @PostMapping("/chat")
-    public ResponseEntity<Map<String, String>> chatWithAi(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<Map<String, String>> chatWithAi(
+            @AuthenticationPrincipal User user,
+            @RequestBody Map<String, String> payload) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Please log in to use the AI Chat."));
+        }
         if (aiChatService.isEmpty()) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("response", "AI is currently disabled."));
@@ -112,12 +120,10 @@ public class MovieController {
         }
         
         try {
-            String response = aiChatService.get().generateChatResponse(userMessage);
+            String response = aiChatService.get().generateChatResponse(userMessage, user);
             return ResponseEntity.ok(Map.of("response", response));
         } catch (Exception e) {
-            // Log the full stack trace
             log.error("AI Chat failed.", e);
-            // Dig into root cause for the response
             String detail = e.getMessage();
             Throwable cause = e.getCause();
             while (cause != null) {
