@@ -36,8 +36,8 @@ public class AiMovieSearchService {
     public SearchPageResponse search(String query, int page, int size) {
         log.info("Performing AI semantic search for: '{}'", query);
 
-        // Fetch a large pool of contextual matches (e.g., top 150) to allow sorting by popularity
-        int poolSize = 150;
+        // Fetch a large pool of contextual matches to allow deep sorting by popularity
+        int poolSize = 1000;
         
         List<Document> documents = vectorStore.similaritySearch(
                 // We removed exact similarityThreshold because all-MiniLM-L6-v2 model 

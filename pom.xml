@@ -128,6 +128,11 @@
 			<artifactId>spring-ai-transformers-spring-boot-starter</artifactId>
 			<version>1.0.0-M1</version>
 		</dependency>
+		<!-- Phase 3: AI Chat using Google Vertex AI Gemini -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-vertex-ai-gemini-spring-boot-starter</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>com.pgvector</groupId>
 			<artifactId>pgvector</artifactId>

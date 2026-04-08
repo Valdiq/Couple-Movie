@@ -17,6 +17,7 @@ import vladyslav.stasyshyn.couple_movie.service.MovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.OmdbService;
 import vladyslav.stasyshyn.couple_movie.service.TmdbService;
 import vladyslav.stasyshyn.couple_movie.service.AiMovieSearchService;
+import vladyslav.stasyshyn.couple_movie.service.AiChatService;
 import org.springframework.http.HttpStatus;
 
 import java.util.*;
@@ -34,6 +35,7 @@ public class MovieController {
     private final EmotionGenreService emotionGenreService;
     private final TmdbService tmdbService;
     private final Optional<AiMovieSearchService> aiMovieSearchService;
+    private final Optional<AiChatService> aiChatService;
 
     /**
      * Search for movies by title using the external OMDb API.
@@ -91,6 +93,24 @@ public class MovieController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
         return ResponseEntity.ok(aiMovieSearchService.get().search(query, page, size));
+    }
+
+    /**
+     * RAG Conversation with AI
+     */
+    @PostMapping("/chat")
+    public ResponseEntity<Map<String, String>> chatWithAi(@RequestBody Map<String, String> payload) {
+        if (aiChatService.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("response", "AI is currently disabled."));
+        }
+        String userMessage = payload.get("message");
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
+        }
+        
+        String response = aiChatService.get().generateChatResponse(userMessage);
+        return ResponseEntity.ok(Map.of("response", response));
     }
 
     /**

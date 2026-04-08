@@ -19,15 +19,18 @@ spring:
     vertex:
       ai:
         gemini:
-          project-id: ${PROJECT_ID:placeholder}
-          location: ${LOCATION:placeholder}
+          project-id: ${GOOGLE_CLOUD_PROJECT:your-project-id}
+          location: ${LOCATION:us-central1}
+          chat:
+            options:
+              model: gemini-1.5-flash
 
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: 768
-        initialize-schema: true
+        dimensions: 384
+        initialize-schema: false
 
   jpa:
     database-platform: ${JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
@@ -80,7 +83,7 @@ app:
     api-key: ${TMDB_API_KEY:placeholder}
 
   ai:
-    enabled: ${AI_ENABLED:false}
+    enabled: ${AI_ENABLED:true}
 
 server:
   port: ${SERVER_PORT:8080}
