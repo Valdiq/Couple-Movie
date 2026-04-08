@@ -57,46 +57,100 @@ function ChatMovieCard({ imdbId, title }) {
   );
 }
 
-/* ───── markdown renderer with movie:// link handling ───── */
+/* ───── markdown renderer with movie card pre-processing ───── */
+const MOVIE_LINK_REGEX = /\[([^\]]+)\]\(movie:\/\/([^)]+)\)/g;
+
 function ChatMarkdown({ content, onMovieClick }) {
+  // Pre-process: split content into text segments and movie card segments
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+  
+  const regex = new RegExp(MOVIE_LINK_REGEX.source, 'g');
+  while ((match = regex.exec(content)) !== null) {
+    // Push text before the match
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    }
+    // Push movie card
+    segments.push({ type: 'movie', title: match[1], imdbId: match[2] });
+    lastIndex = match.index + match[0].length;
+  }
+  // Push remaining text
+  if (lastIndex < content.length) {
+    segments.push({ type: 'text', value: content.slice(lastIndex) });
+  }
+
   return (
-    <ReactMarkdown
-      components={{
-        a: ({ href, children }) => {
-          if (href && href.startsWith('movie://')) {
-            const imdbId = href.replace('movie://', '');
-            const title = typeof children === 'string' ? children : 
-              Array.isArray(children) ? children.join('') : String(children);
-            return (
-              <span onClick={(e) => { e.stopPropagation(); onMovieClick(imdbId); }}>
-                <ChatMovieCard imdbId={imdbId} title={title} />
-              </span>
-            );
-          }
-          return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">{children}</a>;
-        },
-        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-        strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-        ul: ({ children }) => <ul className="space-y-1 my-2">{children}</ul>,
-        ol: ({ children }) => <ol className="space-y-1 my-2 list-decimal list-inside">{children}</ol>,
-        li: ({ children }) => <li className="flex gap-1.5 items-start"><span className="text-primary mt-0.5">•</span><span className="flex-1">{children}</span></li>,
-        em: ({ children }) => <em className="italic text-muted-foreground">{children}</em>,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+    <div className="chat-markdown-content">
+      {segments.map((seg, i) => {
+        if (seg.type === 'movie') {
+          return (
+            <div
+              key={i}
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMovieClick(seg.imdbId); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') onMovieClick(seg.imdbId); }}
+            >
+              <ChatMovieCard imdbId={seg.imdbId} title={seg.title} />
+            </div>
+          );
+        }
+        return (
+          <ReactMarkdown
+            key={i}
+            components={{
+              a: ({ children }) => <span className="text-primary font-medium">{children}</span>,
+              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+              ul: ({ children }) => <ul className="space-y-1 my-2">{children}</ul>,
+              ol: ({ children }) => <ol className="space-y-1 my-2 list-decimal list-inside">{children}</ol>,
+              li: ({ children }) => <li className="flex gap-1.5 items-start"><span className="text-primary mt-0.5">•</span><span className="flex-1">{children}</span></li>,
+              em: ({ children }) => <em className="italic text-muted-foreground">{children}</em>,
+            }}
+          >
+            {seg.value}
+          </ReactMarkdown>
+        );
+      })}
+    </div>
   );
+}
+
+/* ───── session storage helpers ───── */
+const CHAT_STORAGE_KEY = 'couple_movie_chat_history';
+const defaultGreeting = { role: 'assistant', content: '🎬 Hey there! I\'m your **Movie Concierge**.\n\nAsk me anything — like *"I want a sad movie about space"* or *"something similar to Lord of the Rings"* and I\'ll find the best matches from our database! 🍿' };
+
+function loadMessages() {
+  try {
+    const saved = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [defaultGreeting];
+}
+
+function saveMessages(msgs) {
+  try {
+    sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+  } catch {}
 }
 
 /* ───── main widget ───── */
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: '🎬 Hey there! I\'m your **Movie Concierge**.\n\nAsk me anything — like *"I want a sad movie about space"* or *"something similar to Lord of the Rings"* and I\'ll find the best matches from our database! 🍿' }
-  ]);
+  const [messages, setMessages] = useState(loadMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Persist messages to sessionStorage whenever they change
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
 
   // Movie details modal state
   const [selectedMovieId, setSelectedMovieId] = useState(null);
@@ -272,6 +326,8 @@ export default function ChatWidget() {
         movie={selectedMovie}
         isOpen={detailsOpen}
         onClose={() => { setDetailsOpen(false); setSelectedMovie(null); }}
+        onNext={null}
+        onPrevious={null}
       />
     </>
   );
