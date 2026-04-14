@@ -19,6 +19,8 @@ export default function RecommendationSection({ onMovieSelect }) {
                     setGroups(response.groups);
                 } else if (response.message) {
                     setMessage(response.message);
+                } else {
+                    console.warn("API returned 200 OK but groups and message were both empty. Response:", response);
                 }
             } catch (error) {
                 console.error("Error fetching AI recommendations:", error);

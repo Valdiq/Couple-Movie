@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vladyslav.stasyshyn.couple_movie.repository.CoupleMovieRepository;
@@ -52,6 +53,7 @@ public class CoupleMovieService {
     }
 
     @Transactional
+    @CacheEvict(value = "recommendations", key = "#user.id")
     public AddMovieResponse addMovie(User user, Map<String, Object> movieData) {
         String coupleKey = getCoupleKey(user);
         String imdbId = movieData.get("imdb_id") != null ? String.valueOf(movieData.get("imdb_id")) : null;
@@ -97,6 +99,7 @@ public class CoupleMovieService {
     }
 
     @Transactional
+    @CacheEvict(value = "recommendations", key = "#user.id")
     public void removeMovie(User user, String imdbId) {
         String coupleKey = getCoupleKey(user);
         coupleMovieRepository.deleteByCoupleKeyAndImdbId(coupleKey, imdbId);

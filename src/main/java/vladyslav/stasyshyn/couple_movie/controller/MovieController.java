@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vladyslav.stasyshyn.couple_movie.dto.SearchPageResponse;
+import vladyslav.stasyshyn.couple_movie.dto.RecommendationResponse;
 import vladyslav.stasyshyn.couple_movie.dto.omdb.OmdbSearchResponse;
 import vladyslav.stasyshyn.couple_movie.entity.Movie;
 import vladyslav.stasyshyn.couple_movie.entity.User;
@@ -21,6 +22,7 @@ import vladyslav.stasyshyn.couple_movie.service.OmdbService;
 import vladyslav.stasyshyn.couple_movie.service.TmdbService;
 import vladyslav.stasyshyn.couple_movie.service.AiMovieSearchService;
 import vladyslav.stasyshyn.couple_movie.service.AiChatService;
+import vladyslav.stasyshyn.couple_movie.service.AiRecommendationService;
 import org.springframework.http.HttpStatus;
 
 import java.util.*;
@@ -40,6 +42,7 @@ public class MovieController {
     private final TmdbService tmdbService;
     private final Optional<AiMovieSearchService> aiMovieSearchService;
     private final Optional<AiChatService> aiChatService;
+    private final Optional<AiRecommendationService> aiRecommendationService;
 
     /**
      * Search for movies by title using the external OMDb API.
@@ -214,5 +217,25 @@ public class MovieController {
     @PostMapping("/batch-ratings")
     public ResponseEntity<Map<String, Double>> batchRatings(@RequestBody Map<String, List<String>> body) {
         return ResponseEntity.ok(movieSearchService.getBatchRatings(body));
+    }
+
+    /**
+     * Get AI-powered personalized movie recommendations for the logged-in user.
+     */
+    @GetMapping("/recommendations")
+    public ResponseEntity<RecommendationResponse> getRecommendations(
+            @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (aiRecommendationService.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        try {
+            return ResponseEntity.ok(aiRecommendationService.get().getRecommendations(user));
+        } catch (Exception e) {
+            log.error("AI Recommendations failed.", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

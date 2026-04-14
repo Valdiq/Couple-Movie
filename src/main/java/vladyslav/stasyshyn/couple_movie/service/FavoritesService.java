@@ -1,6 +1,7 @@
 package vladyslav.stasyshyn.couple_movie.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vladyslav.stasyshyn.couple_movie.dto.AddFavoriteResponse;
@@ -39,6 +40,7 @@ public class FavoritesService {
     }
 
     @Transactional
+    @CacheEvict(value = "recommendations", key = "#user.id")
     public AddFavoriteResponse addFavorite(User user, Map<String, String> request) {
         String imdbId = request.get("imdb_id");
 
@@ -91,6 +93,7 @@ public class FavoritesService {
     }
 
     @Transactional
+    @CacheEvict(value = "recommendations", key = "#user.id")
     public void removeFavorite(User user, String imdbId) {
         userFavoriteRepository.deleteByUserAndImdbId(user, imdbId);
     }
