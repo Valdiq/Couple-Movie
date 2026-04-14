@@ -57,7 +57,8 @@ public class AiRecommendationService {
                     "Add at least 3 movies to your favorites or couple list to get personalized recommendations.");
         }
 
-        List<String> seedImdbIds = pickSeedMovies(favorites, coupleMovies, 3);
+        int targetGroups = 3;
+        List<String> seedImdbIds = pickSeedMovies(favorites, coupleMovies, 20); // Pick up to 20 potential seeds
         List<Movie> seedMovies = movieRepository.findByImdbIdIn(seedImdbIds);
 
         if (seedMovies.isEmpty()) {
@@ -68,9 +69,11 @@ public class AiRecommendationService {
         Set<String> alreadyRecommendedIds = new HashSet<>();
 
         for (Movie seed : seedMovies) {
+            if (groups.size() >= targetGroups) break;
+
             String queryText = buildQueryForSeed(seed);
             List<Document> documents = vectorStore.similaritySearch(
-                    SearchRequest.query(queryText).withTopK(50)
+                    SearchRequest.query(queryText).withTopK(100) // Increase K to ensure we find 4 good matches after strict filtering
             );
 
             List<String> foundImdbIds = documents.stream()
@@ -83,10 +86,30 @@ public class AiRecommendationService {
                     .collect(Collectors.toMap(Movie::getImdbId, m -> m, (a, b) -> a));
 
             List<Movie> candidates = new ArrayList<>();
+            boolean isSeedAnimation = seed.getGenre() != null && seed.getGenre().contains("Animation");
+            Set<String> seedGenres = extractGenres(seed.getGenre());
+
             for (String id : foundImdbIds) {
-                if (!knownImdbIds.contains(id) && !alreadyRecommendedIds.contains(id) && movieMap.containsKey(id)) {
-                    candidates.add(movieMap.get(id));
+                if (knownImdbIds.contains(id) || alreadyRecommendedIds.contains(id) || !movieMap.containsKey(id)) {
+                    continue;
                 }
+                
+                Movie candidate = movieMap.get(id);
+                boolean isCandidateAnimation = candidate.getGenre() != null && candidate.getGenre().contains("Animation");
+
+                // Strict filter 1: Animation Bleed Prevention
+                if (isSeedAnimation != isCandidateAnimation) {
+                    continue;
+                }
+
+                // Strict filter 2: Genre overlap
+                Set<String> candidateGenres = extractGenres(candidate.getGenre());
+                candidateGenres.retainAll(seedGenres); // Intersection
+                if (candidateGenres.isEmpty() && !seedGenres.isEmpty()) {
+                    continue; // Must share at least one genre
+                }
+
+                candidates.add(candidate);
             }
 
             candidates.sort((m1, m2) -> {
@@ -96,7 +119,7 @@ public class AiRecommendationService {
             });
 
             List<Movie> top4 = candidates.stream().limit(4).collect(Collectors.toList());
-            if (!top4.isEmpty()) {
+            if (top4.size() == 4) { // Only add if we successfully found 4 matches
                 groups.add(new RecommendationGroup("Because you loved " + seed.getTitle(), top4));
                 top4.forEach(m -> alreadyRecommendedIds.add(m.getImdbId()));
             }
@@ -141,25 +164,25 @@ public class AiRecommendationService {
         return seedIds;
     }
 
+    private Set<String> extractGenres(String genreString) {
+        if (genreString == null || genreString.equalsIgnoreCase("N/A") || genreString.isBlank()) {
+            return new HashSet<>();
+        }
+        return Arrays.stream(genreString.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+    }
+
     private String buildQueryForSeed(Movie movie) {
-        StringBuilder query = new StringBuilder();
-        if (movie.getGenre() != null && !movie.getGenre().equalsIgnoreCase("N/A")) {
-            query.append(movie.getGenre().replace(",", " ")).append(" ");
-        }
-        if (movie.getPlot() != null && !movie.getPlot().equalsIgnoreCase("N/A")) {
-            String plot = movie.getPlot();
-            if (plot.length() > 200) {
-                plot = plot.substring(0, 200);
-            }
-            query.append(plot).append(" ");
-        }
-        if (movie.getDirector() != null && !movie.getDirector().equalsIgnoreCase("N/A")) {
-            query.append(movie.getDirector()).append(" ");
-        }
-        if (movie.getActors() != null && !movie.getActors().equalsIgnoreCase("N/A")) {
-            query.append(movie.getActors()).append(" ");
-        }
-        return query.toString().trim();
+        return String.format(
+                "Title: %s\nYear: %s\nGenres: %s\nDirector: %s\nActors: %s\nPlot: %s",
+                movie.getTitle() != null ? movie.getTitle() : "N/A",
+                movie.getYear() != null ? movie.getYear() : "N/A",
+                movie.getGenre() != null ? movie.getGenre() : "N/A",
+                movie.getDirector() != null ? movie.getDirector() : "N/A",
+                movie.getActors() != null ? movie.getActors() : "N/A",
+                movie.getPlot() != null ? movie.getPlot() : "N/A"
+        );
     }
 
     private List<CoupleMovie> getCoupleMovies(User user) {
