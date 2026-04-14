@@ -38,7 +38,7 @@ export default function RecommendationSection({ onMovieSelect }) {
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     <span className="text-muted-foreground font-medium">Brewing AI recommendations...</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 lg:w-[80%] xl:w-[80%] mx-auto xl:gap-6">
                     {[1, 2, 3, 4].map(i => (
                         <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-card border border-border" />
                     ))}
@@ -83,7 +83,7 @@ export default function RecommendationSection({ onMovieSelect }) {
                         <h3 className="text-lg font-semibold text-foreground mb-4 pl-1 border-l-4 border-primary/50">
                             {group.reason}
                         </h3>
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 lg:w-[80%] xl:w-[80%] mx-auto xl:gap-6">
                             {group.movies.map((movie, movieIndex) => (
                                 <motion.div
                                     key={movie.id || movie.imdb_id || movieIndex}
