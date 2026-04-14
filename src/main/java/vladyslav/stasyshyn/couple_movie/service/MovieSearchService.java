@@ -24,6 +24,7 @@ import vladyslav.stasyshyn.couple_movie.repository.MovieRepository;
 import java.time.Year;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -32,12 +33,17 @@ public class MovieSearchService {
     private final MovieRepository movieRepository;
     private final Client meilisearchClient;
     private final ObjectMapper objectMapper;
+    private final Optional<AiVectorizationService> aiVectorizationService;
     private final String INDEX_NAME = "movies";
 
-    public MovieSearchService(MovieRepository movieRepository, Client meilisearchClient, ObjectMapper objectMapper) {
+    public MovieSearchService(MovieRepository movieRepository, 
+                            Client meilisearchClient, 
+                            ObjectMapper objectMapper,
+                            Optional<AiVectorizationService> aiVectorizationService) {
         this.movieRepository = movieRepository;
         this.meilisearchClient = meilisearchClient;
         this.objectMapper = objectMapper;
+        this.aiVectorizationService = aiVectorizationService;
         setupMeilisearch();
     }
 
@@ -141,6 +147,7 @@ public class MovieSearchService {
                 .imdbRating(rating)
                 .build();
         movieRepository.save(Objects.requireNonNull(movie));
+        aiVectorizationService.ifPresent(service -> service.vectorizeMovie(movie));
 
         List<String> genreList = new ArrayList<>();
         if (omdbMovie.genre() != null && !omdbMovie.genre().isEmpty() && !omdbMovie.genre().equals("N/A")) {
@@ -198,6 +205,7 @@ public class MovieSearchService {
                 .imdbRating(rating)
                 .build();
         movieRepository.save(Objects.requireNonNull(movie));
+        aiVectorizationService.ifPresent(service -> service.vectorizeMovie(movie));
 
         List<String> genreList = new ArrayList<>();
         if (omdbMovie.genre() != null && !omdbMovie.genre().isEmpty() && !omdbMovie.genre().equals("N/A")) {

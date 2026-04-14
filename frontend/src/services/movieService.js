@@ -54,5 +54,9 @@ export const movieService = {
     getRandom: async () => {
         const response = await api.get(`/movies/random`);
         return response.data;
+    },
+    getRecommendations: async () => {
+        const response = await api.get(`/movies/recommendations`);
+        return response.data;
     }
 };

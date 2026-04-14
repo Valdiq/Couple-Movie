@@ -10,6 +10,8 @@ import MovieDetails from "../components/movie/MovieDetails";
 import ChatWidget from "../components/chat/ChatWidget";
 import AppleEmoji from "@/components/ui/AppleEmoji";
 import Pagination from "../components/ui/Pagination";
+import RecommendationSection from "../components/movie/RecommendationSection";
+import { useAuth } from "@/lib/AuthContext";
 
 const EMOTIONS = [
   { name: "Romantic", text: "Romantic", emoji: "💕" },
@@ -27,6 +29,7 @@ const EMOTIONS = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [customVibe, setCustomVibe] = useState("");
   const [movies, setMovies] = useState([]);
@@ -277,6 +280,11 @@ export default function Home() {
             </div>
           )}
         </section>
+      )}
+
+      {/* AI Recommendations */}
+      {user && !selectedEmotion && (
+        <RecommendationSection onMovieSelect={handleMovieSelect} />
       )}
 
       {/* Empty state — no emotion selected */}

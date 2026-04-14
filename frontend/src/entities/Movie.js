@@ -144,5 +144,21 @@ export const Movie = {
             console.error("Failed to get random movie", e);
             return null;
         }
+    },
+    getRecommendations: async () => {
+        try {
+            const response = await movieService.getRecommendations();
+            if (!response) return { groups: [], message: null };
+            return {
+                groups: (response.groups || []).map(g => ({
+                    reason: g.reason,
+                    movies: (g.movies || []).map(mapOmdbToFrontend)
+                })),
+                message: response.message
+            };
+        } catch (e) {
+            console.error("Failed to fetch recommendations", e);
+            return { groups: [], message: null };
+        }
     }
 };
