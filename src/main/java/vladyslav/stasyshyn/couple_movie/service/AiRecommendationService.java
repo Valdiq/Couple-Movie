@@ -58,7 +58,7 @@ public class AiRecommendationService {
         }
 
         int targetGroups = 3;
-        List<String> seedImdbIds = pickSeedMovies(favorites, coupleMovies, 20); // Pick up to 20 potential seeds
+        List<String> seedImdbIds = pickSeedMovies(favorites, coupleMovies, 20);
         List<Movie> seedMovies = movieRepository.findByImdbIdIn(seedImdbIds);
 
         if (seedMovies.isEmpty()) {
@@ -73,7 +73,7 @@ public class AiRecommendationService {
 
             String queryText = buildQueryForSeed(seed);
             List<Document> documents = vectorStore.similaritySearch(
-                    SearchRequest.query(queryText).withTopK(100) // Increase K to ensure we find 4 good matches after strict filtering
+                    SearchRequest.query(queryText).withTopK(100)
             );
 
             List<String> foundImdbIds = documents.stream()
