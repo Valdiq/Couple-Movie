@@ -75,6 +75,21 @@ public class AiVectorizationService {
         log.info("AI Vectorization backfill COMPLETE!");
     }
 
+    /**
+     * Vectorizes a single movie and adds it to the vector store.
+     * This is used during JIT synchronization when a new movie is discovered.
+     */
+    public void vectorizeMovie(Movie movie) {
+        try {
+            log.info("AI: Vectorizing movie '{}' (ID: {})", movie.getTitle(), movie.getImdbId());
+            Document doc = createDocumentFromMovie(movie);
+            vectorStore.add(List.of(doc));
+            log.info("AI: Successfully added movie '{}' to vector store.", movie.getTitle());
+        } catch (Exception e) {
+            log.error("AI: Failed to vectorize movie '{}'.", movie.getTitle(), e);
+        }
+    }
+
     private Document createDocumentFromMovie(Movie movie) {
         // The text content is what the AI will read to understand the movie
         String aiContent = String.format(

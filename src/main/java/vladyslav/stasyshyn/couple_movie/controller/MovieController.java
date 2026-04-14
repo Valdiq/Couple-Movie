@@ -118,7 +118,7 @@ public class MovieController {
         if (userMessage == null || userMessage.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
         }
-        
+
         try {
             String response = aiChatService.get().generateChatResponse(userMessage, user);
             return ResponseEntity.ok(Map.of("response", response));
@@ -131,7 +131,8 @@ public class MovieController {
                 cause = cause.getCause();
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to generate content", "details", detail != null ? detail : "Unknown error"));
+                    .body(Map.of("error", "Failed to generate content", "details",
+                            detail != null ? detail : "Unknown error"));
         }
     }
 
@@ -169,7 +170,8 @@ public class MovieController {
             @RequestParam("emotions") List<String> emotions,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
-        return ResponseEntity.ok(movieSearchService.filterMoviesAndEmotions(null, emotions, emotionGenreService, page, size, false));
+        return ResponseEntity
+                .ok(movieSearchService.filterMoviesAndEmotions(null, emotions, emotionGenreService, page, size, false));
     }
 
     /**
@@ -182,7 +184,8 @@ public class MovieController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "15") int size,
             @RequestParam(value = "awarded", defaultValue = "false") boolean awarded) {
-        return ResponseEntity.ok(movieSearchService.filterMoviesAndEmotions(genres, emotions, emotionGenreService, page, size, awarded));
+        return ResponseEntity.ok(
+                movieSearchService.filterMoviesAndEmotions(genres, emotions, emotionGenreService, page, size, awarded));
     }
 
     /**
