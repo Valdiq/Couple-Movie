@@ -177,10 +177,9 @@ export default function Favorites() {
           </div>
         </motion.div>
 
-        {/* Cards Grid */}
         {filteredFavorites.length > 0 && (
           <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <motion.div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
               {paginatedFavorites.map((fav, index) => (
                 <motion.div key={fav.id || fav.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
                   <div className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30" onClick={() => handleMovieSelect(fav)}>

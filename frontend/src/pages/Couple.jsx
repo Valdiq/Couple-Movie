@@ -305,7 +305,7 @@ export default function CouplePage() {
         ) : filteredMovies.length > 0 ? (
           <div className="space-y-6">
             <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <motion.div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
                 {paginatedMovies.map((movie, index) => (
                   <motion.div key={movie.id || movie.imdbId} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.03 }} className="group relative">
                     <div className={cn("cursor-pointer overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30", movie.isMatch && "ring-2 ring-pink-500/80 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] glow-pink")} onClick={() => handleMovieSelect(movie)}>

@@ -404,9 +404,8 @@ export default function Search() {
             <p className="text-sm text-muted-foreground">Loading...</p>
           )}
 
-          {/* Loading */}
           {(isLoading || isSearching) && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6">
               {Array(10).fill(0).map((_, i) => (
                 <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-card border border-border" />
               ))}
@@ -417,7 +416,7 @@ export default function Search() {
           {!(isLoading || isSearching) && (
             <AnimatePresence>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:gap-6"
               >
                 {filteredMovies.map((movie, index) => (
                   <motion.div key={`${movie.id || movie.imdb_id || 'movie'}-${index}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
